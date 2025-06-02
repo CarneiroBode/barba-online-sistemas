@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Service, Appointment } from "@/pages/Index";
+import { getAvailableTimeSlots, isTimeSlotInFuture } from "@/utils/timeUtils";
 
 interface DateTimeSelectionProps {
   service: Service;
@@ -40,22 +41,21 @@ const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointm
   };
 
   const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 8; hour < 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
-      }
-    }
-    return slots;
+    return getAvailableTimeSlots(selectedDate);
   };
 
   const isTimeSlotAvailable = (date: string, time: string) => {
-    return !existingAppointments.some(apt => 
+    // Verificar se não há agendamento confirmado no horário
+    const hasExistingAppointment = existingAppointments.some(apt => 
       apt.date === date && 
       apt.time === time && 
       apt.status === 'confirmed'
     );
+    
+    // Verificar se o horário não é no passado
+    const isFutureTime = isTimeSlotInFuture(date, time);
+    
+    return !hasExistingAppointment && isFutureTime;
   };
 
   const dates = generateDates();
