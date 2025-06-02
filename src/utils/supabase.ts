@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export interface UserAuth {
   phone: string;
   name: string;
-  securityCode: string;
+  securitycode: string; // Minúsculo para compatibilidade com n8n
   createdAt?: string;
 }
 
@@ -17,7 +17,7 @@ export interface SecureAppointment {
   id: string;
   phone: string;
   name: string;
-  securityCode: string;
+  securitycode: string; // Minúsculo para compatibilidade com n8n
   service: any;
   professional: string;
   date: string;
@@ -38,7 +38,7 @@ export const validateUserAccess = async (phone: string, securityCode: string): P
       .from('user_auth')
       .select('*')
       .eq('phone', phone)
-      .eq('securityCode', securityCode)
+      .eq('securitycode', securityCode)
       .single();
 
     if (error) {
@@ -63,7 +63,7 @@ export const upsertUser = async (phone: string, name: string): Promise<string> =
       .upsert({
         phone,
         name,
-        securityCode
+        securitycode: securityCode
       }, {
         onConflict: 'phone'
       })
@@ -112,7 +112,7 @@ export const saveAppointmentToSupabase = async (appointment: any, phone: string,
         id: appointment.id,
         phone,
         name: appointment.clientName,
-        securityCode,
+        securitycode: securityCode,
         service: appointment.service,
         professional: appointment.professional,
         date: appointment.date,
