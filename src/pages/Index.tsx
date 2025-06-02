@@ -92,18 +92,8 @@ const Index = () => {
       // Verificar parâmetros da URL
       const phone = searchParams.get('phone');
       const code = searchParams.get('code');
-      const isTest = searchParams.get('test') === 'true';
 
-      if (isTest && phone) {
-        // Modo de teste - criar usuário automaticamente
-        setClientPhone(phone);
-        setIsNewClient(true);
-        setStep('auth');
-        toast({
-          title: "🧪 Modo de Teste Ativo",
-          description: "Criando usuário de teste...",
-        });
-      } else if (phone && code) {
+      if (phone && code) {
         // Validar acesso com código de segurança
         const isValid = await validateUserAccess(phone, code);
         if (isValid) {
@@ -175,18 +165,7 @@ const Index = () => {
           description: "Usuário registrado com sucesso!",
         });
 
-        console.log('🔗 Link seguro gerado:', secureLink);
-        
-        // Se for modo de teste, mostrar informações adicionais
-        const isTestMode = searchParams.get('test') === 'true';
-        if (isTestMode) {
-          setTimeout(() => {
-            toast({
-              title: "🧪 Link de Teste Criado",
-              description: `Use: ${window.location.origin}?phone=${clientPhone}&code=${newSecurityCode}`,
-            });
-          }, 2000);
-        }
+        console.log('Link seguro gerado:', secureLink);
       } catch (error) {
         toast({
           title: "Erro",
@@ -309,11 +288,6 @@ const Index = () => {
                 <p className="text-lg">
                   Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar seus agendamentos.
                 </p>
-              </div>
-              <div className="bg-blue-800 rounded-2xl p-4 mb-4 text-sm">
-                <p className="font-bold mb-2">🧪 Para testar o sistema:</p>
-                <p className="mb-1">URL de teste: <code className="bg-gray-700 px-2 py-1 rounded">?test=true&phone=5511999999999</code></p>
-                <p className="text-xs text-gray-300">Isso criará um usuário de teste e mostrará o link seguro.</p>
               </div>
             )}
           </div>
