@@ -237,13 +237,6 @@ const Index = () => {
                 <Clock className="mr-2" />
                 Meus Agendamentos
               </Button>
-              <Button 
-                onClick={() => window.open('/admin', '_blank')}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl p-4 text-lg"
-              >
-                <Settings className="mr-2" />
-                Painel Administrativo
-              </Button>
             </div>
           </div>
         </div>
