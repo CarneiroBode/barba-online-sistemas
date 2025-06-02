@@ -43,6 +43,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
     const now = new Date();
     const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}:00`);
     const diffInHours = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    console.log('Can cancel check:', { diffInHours, status: appointment.status, canCancel: diffInHours >= 2 && appointment.status === 'confirmed' });
     return diffInHours >= 2 && appointment.status === 'confirmed';
   };
 
@@ -103,19 +104,20 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
           </div>
         ) : (
           <div className="space-y-4">
-            {confirmedAppointments.map((appointment) => (
-              <Card key={appointment.id} className="bg-gray-700 border-gray-600">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-white text-sm">{formatDate(appointment.date)} às {appointment.time}</p>
-                      <h3 className="text-white text-xl font-bold mt-2">{appointment.clientName}</h3>
-                      <p className="text-gray-300 text-lg">{appointment.service.name.toUpperCase()}</p>
-                      <p className="text-gray-400">PROFISSIONAL: {appointment.professional.toUpperCase()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white text-xl font-bold">R$ {appointment.service.price.toFixed(2)}</p>
-                      {canCancelAppointment(appointment) && (
+            {confirmedAppointments.map((appointment) => {
+              const canCancel = canCancelAppointment(appointment);
+              return (
+                <Card key={appointment.id} className="bg-gray-700 border-gray-600">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-white text-sm">{formatDate(appointment.date)} às {appointment.time}</p>
+                        <h3 className="text-white text-xl font-bold mt-2">{appointment.clientName}</h3>
+                        <p className="text-gray-300 text-lg">{appointment.service.name.toUpperCase()}</p>
+                        <p className="text-gray-400">PROFISSIONAL: {appointment.professional.toUpperCase()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white text-xl font-bold">R$ {appointment.service.price.toFixed(2)}</p>
                         <Button
                           onClick={() => handleCancelClick(appointment.id)}
                           variant="destructive"
@@ -124,20 +126,28 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                         >
                           CANCELAR
                         </Button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                  
-                  {canCancelAppointment(appointment) && (
-                    <div className="mt-4 p-3 bg-gray-600 rounded-lg">
-                      <p className="text-sm text-gray-300">
-                        Este estabelecimento permite cancelamentos com no mínimo 2h de antecedência.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    
+                    {canCancel && (
+                      <div className="mt-4 p-3 bg-gray-600 rounded-lg">
+                        <p className="text-sm text-gray-300">
+                          Este estabelecimento permite cancelamentos com no mínimo 2h de antecedência.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {!canCancel && (
+                      <div className="mt-4 p-3 bg-red-900/20 rounded-lg">
+                        <p className="text-sm text-red-300">
+                          Cancelamento não permitido (menos de 2h de antecedência ou agendamento já passou).
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
             
             <Button 
               onClick={onNewAppointment}

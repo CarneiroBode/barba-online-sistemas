@@ -1,9 +1,8 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, User, Phone } from "lucide-react";
+import { Calendar, Clock, User, Phone, Settings } from "lucide-react";
 import ServiceSelection from "@/components/ServiceSelection";
 import DateTimeSelection from "@/components/DateTimeSelection";
 import AppointmentConfirmation from "@/components/AppointmentConfirmation";
@@ -237,6 +236,13 @@ const Index = () => {
               >
                 <Clock className="mr-2" />
                 Meus Agendamentos
+              </Button>
+              <Button 
+                onClick={() => window.open('/admin', '_blank')}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl p-4 text-lg"
+              >
+                <Settings className="mr-2" />
+                Painel Administrativo
               </Button>
             </div>
           </div>
