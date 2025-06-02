@@ -10,7 +10,7 @@ export interface UserAuth {
   phone: string;
   name: string;
   securityCode: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface SecureAppointment {
@@ -23,7 +23,7 @@ export interface SecureAppointment {
   date: string;
   time: string;
   status: 'confirmed' | 'cancelled';
-  createdAt: string;
+  createdAt?: string;
 }
 
 // Gerar código de segurança único
@@ -63,8 +63,7 @@ export const upsertUser = async (phone: string, name: string): Promise<string> =
       .upsert({
         phone,
         name,
-        securityCode,
-        createdAt: new Date().toISOString()
+        securityCode
       }, {
         onConflict: 'phone'
       })
@@ -118,8 +117,7 @@ export const saveAppointmentToSupabase = async (appointment: any, phone: string,
         professional: appointment.professional,
         date: appointment.date,
         time: appointment.time,
-        status: appointment.status,
-        createdAt: appointment.createdAt
+        status: appointment.status
       });
 
     if (error) {
