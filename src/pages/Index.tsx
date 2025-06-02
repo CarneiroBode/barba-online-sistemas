@@ -23,11 +23,18 @@ export interface Appointment {
   clientName: string;
   clientPhone: string;
   service: Service;
-  barber: string;
+  professional: string;
   date: string;
   time: string;
   status: 'confirmed' | 'cancelled';
   createdAt: string;
+}
+
+interface CompanyInfo {
+  name: string;
+  address: string;
+  phone: string;
+  professionalName: string;
 }
 
 const Index = () => {
@@ -41,18 +48,37 @@ const Index = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [isNewClient, setIsNewClient] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    name: 'MEUS AGENDAMENTOS',
+    address: '',
+    phone: '',
+    professionalName: 'Profissional'
+  });
 
-  // Dados mock - em produção viria do backend
+  // Dados dinâmicos - carregados do localStorage
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [services] = useState<Service[]>([
-    { id: '1', name: 'Corte', price: 35, duration: 30 },
-    { id: '2', name: 'Barba', price: 35, duration: 30 },
-    { id: '3', name: 'Corte + Barba', price: 60, duration: 60 },
-    { id: '4', name: 'Barboterapia', price: 89, duration: 90 },
-    { id: '5', name: 'Pezinho', price: 10, duration: 15 }
-  ]);
+  const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
+    // Carregar informações da empresa
+    const savedCompanyInfo = localStorage.getItem('companyInfo');
+    if (savedCompanyInfo) {
+      setCompanyInfo(JSON.parse(savedCompanyInfo));
+    }
+
+    // Carregar serviços
+    const savedServices = localStorage.getItem('services');
+    if (savedServices) {
+      setServices(JSON.parse(savedServices));
+    } else {
+      // Serviços padrão apenas se não houver salvos
+      const defaultServices: Service[] = [
+        { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
+        { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
+      ];
+      setServices(defaultServices);
+    }
+
     // Verificar se há número de telefone na URL
     const phone = searchParams.get('phone');
     if (phone) {
@@ -112,7 +138,7 @@ const Index = () => {
       clientName,
       clientPhone,
       service: selectedService,
-      barber: 'Wanderson',
+      professional: companyInfo.professionalName || 'Profissional',
       date: selectedDate,
       time: selectedTime,
       status: 'confirmed',
@@ -128,6 +154,7 @@ const Index = () => {
       const webhookData = {
         type: 'appointment_confirmed',
         appointment: newAppointment,
+        companyInfo: companyInfo,
         timestamp: new Date().toISOString()
       };
       
@@ -161,7 +188,7 @@ const Index = () => {
       <div className="min-h-screen bg-gray-900 text-white p-4">
         <div className="max-w-md mx-auto pt-20">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-4">MEUS AGENDAMENTOS</h1>
+            <h1 className="text-2xl font-bold mb-4">{companyInfo.name}</h1>
             <div className="bg-amber-700 rounded-2xl p-6 mb-6">
               <p className="text-lg">Como vai! Que bom que chegou!</p>
             </div>
@@ -195,7 +222,7 @@ const Index = () => {
       {step === 'welcome' && (
         <div className="p-4">
           <div className="max-w-md mx-auto pt-20 text-center">
-            <h1 className="text-2xl font-bold mb-8">BARBEARIA DOUTOR DA BARBA</h1>
+            <h1 className="text-2xl font-bold mb-8">{companyInfo.name}</h1>
             <div className="space-y-4">
               <Button 
                 onClick={() => setStep('service')}
@@ -221,6 +248,7 @@ const Index = () => {
           services={services}
           onServiceSelect={handleServiceSelect}
           onBack={() => setStep('welcome')}
+          companyName={companyInfo.name}
         />
       )}
 
@@ -239,7 +267,8 @@ const Index = () => {
           service={selectedService}
           date={selectedDate}
           time={selectedTime}
-          barber="Wanderson"
+          professional={companyInfo.professionalName || 'Profissional'}
+          companyInfo={companyInfo}
           onConfirm={handleConfirmAppointment}
           onNewAppointment={() => {
             setSelectedService(null);

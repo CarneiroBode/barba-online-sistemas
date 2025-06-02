@@ -1,19 +1,35 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, User, Settings } from "lucide-react";
+import { Calendar, Clock, User, Settings, Building, Plus, Edit, Trash2 } from "lucide-react";
 import { Appointment, Service } from "@/pages/Index";
 import { useToast } from "@/hooks/use-toast";
+
+interface CompanyInfo {
+  name: string;
+  address: string;
+  phone: string;
+  professionalName: string;
+}
 
 const Admin = () => {
   const { toast } = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [view, setView] = useState<'dashboard' | 'appointments' | 'services'>('dashboard');
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    name: '',
+    address: '',
+    phone: '',
+    professionalName: ''
+  });
+  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company'>('dashboard');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  
+  // Estados para edição de serviços
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [newService, setNewService] = useState({ name: '', price: 0, duration: 30 });
 
   useEffect(() => {
     // Carregar dados do localStorage
@@ -22,15 +38,87 @@ const Admin = () => {
       setAppointments(JSON.parse(savedAppointments));
     }
 
-    const defaultServices: Service[] = [
-      { id: '1', name: 'Corte', price: 35, duration: 30 },
-      { id: '2', name: 'Barba', price: 35, duration: 30 },
-      { id: '3', name: 'Corte + Barba', price: 60, duration: 60 },
-      { id: '4', name: 'Barboterapia', price: 89, duration: 90 },
-      { id: '5', name: 'Pezinho', price: 10, duration: 15 }
-    ];
-    setServices(defaultServices);
+    const savedServices = localStorage.getItem('services');
+    if (savedServices) {
+      setServices(JSON.parse(savedServices));
+    } else {
+      // Serviços padrão apenas se não houver salvos
+      const defaultServices: Service[] = [
+        { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
+        { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
+      ];
+      setServices(defaultServices);
+      localStorage.setItem('services', JSON.stringify(defaultServices));
+    }
+
+    const savedCompanyInfo = localStorage.getItem('companyInfo');
+    if (savedCompanyInfo) {
+      setCompanyInfo(JSON.parse(savedCompanyInfo));
+    }
   }, []);
+
+  const saveCompanyInfo = () => {
+    localStorage.setItem('companyInfo', JSON.stringify(companyInfo));
+    toast({
+      title: "Informações salvas!",
+      description: "As informações da empresa foram atualizadas com sucesso.",
+    });
+  };
+
+  const addService = () => {
+    if (!newService.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do serviço é obrigatório.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const service: Service = {
+      id: Date.now().toString(),
+      name: newService.name,
+      price: newService.price,
+      duration: newService.duration
+    };
+
+    const updatedServices = [...services, service];
+    setServices(updatedServices);
+    localStorage.setItem('services', JSON.stringify(updatedServices));
+    setNewService({ name: '', price: 0, duration: 30 });
+    
+    toast({
+      title: "Serviço adicionado!",
+      description: `${service.name} foi adicionado com sucesso.`,
+    });
+  };
+
+  const updateService = () => {
+    if (!editingService) return;
+
+    const updatedServices = services.map(service => 
+      service.id === editingService.id ? editingService : service
+    );
+    setServices(updatedServices);
+    localStorage.setItem('services', JSON.stringify(updatedServices));
+    setEditingService(null);
+    
+    toast({
+      title: "Serviço atualizado!",
+      description: `${editingService.name} foi atualizado com sucesso.`,
+    });
+  };
+
+  const deleteService = (serviceId: string) => {
+    const updatedServices = services.filter(service => service.id !== serviceId);
+    setServices(updatedServices);
+    localStorage.setItem('services', JSON.stringify(updatedServices));
+    
+    toast({
+      title: "Serviço removido!",
+      description: "O serviço foi removido com sucesso.",
+    });
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00');
@@ -69,7 +157,9 @@ const Admin = () => {
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Painel do Barbeiro</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {companyInfo.name || 'Painel Administrativo'}
+          </h1>
           <div className="flex space-x-2">
             <Button 
               variant={view === 'dashboard' ? 'default' : 'outline'}
@@ -92,8 +182,64 @@ const Admin = () => {
               <Settings className="w-4 h-4 mr-2" />
               Serviços
             </Button>
+            <Button 
+              variant={view === 'company' ? 'default' : 'outline'}
+              onClick={() => setView('company')}
+            >
+              <Building className="w-4 h-4 mr-2" />
+              Empresa
+            </Button>
           </div>
         </div>
+
+        {view === 'company' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações da Empresa</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="company-name">Nome da Empresa/Estabelecimento</Label>
+                <Input
+                  id="company-name"
+                  value={companyInfo.name}
+                  onChange={(e) => setCompanyInfo({...companyInfo, name: e.target.value})}
+                  placeholder="Ex: Salão Beleza & Arte"
+                />
+              </div>
+              <div>
+                <Label htmlFor="professional-name">Nome do Profissional</Label>
+                <Input
+                  id="professional-name"
+                  value={companyInfo.professionalName}
+                  onChange={(e) => setCompanyInfo({...companyInfo, professionalName: e.target.value})}
+                  placeholder="Ex: Maria Silva"
+                />
+              </div>
+              <div>
+                <Label htmlFor="company-address">Endereço</Label>
+                <Input
+                  id="company-address"
+                  value={companyInfo.address}
+                  onChange={(e) => setCompanyInfo({...companyInfo, address: e.target.value})}
+                  placeholder="Ex: Rua das Flores, 123 - Centro"
+                />
+              </div>
+              <div>
+                <Label htmlFor="company-phone">Telefone</Label>
+                <Input
+                  id="company-phone"
+                  value={companyInfo.phone}
+                  onChange={(e) => setCompanyInfo({...companyInfo, phone: e.target.value})}
+                  placeholder="Ex: (11) 99999-9999"
+                />
+              </div>
+              <Button onClick={saveCompanyInfo} className="w-full">
+                Salvar Informações
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {view === 'dashboard' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -187,26 +333,125 @@ const Admin = () => {
         )}
 
         {view === 'services' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Gerenciar Serviços</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.map((service) => (
-                  <div key={service.id} className="flex justify-between items-center p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-semibold">{service.name}</h3>
-                      <p className="text-sm text-muted-foreground">{service.duration} minutos</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">R$ {service.price.toFixed(2)}</p>
-                    </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adicionar Novo Serviço</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="service-name">Nome do Serviço</Label>
+                    <Input
+                      id="service-name"
+                      value={newService.name}
+                      onChange={(e) => setNewService({...newService, name: e.target.value})}
+                      placeholder="Ex: Corte de Cabelo"
+                    />
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <Label htmlFor="service-price">Preço (R$)</Label>
+                    <Input
+                      id="service-price"
+                      type="number"
+                      value={newService.price}
+                      onChange={(e) => setNewService({...newService, price: Number(e.target.value)})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="service-duration">Duração (minutos)</Label>
+                    <Input
+                      id="service-duration"
+                      type="number"
+                      value={newService.duration}
+                      onChange={(e) => setNewService({...newService, duration: Number(e.target.value)})}
+                      placeholder="30"
+                    />
+                  </div>
+                </div>
+                <Button onClick={addService} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Serviço
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Serviços Cadastrados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {services.map((service) => (
+                    <div key={service.id} className="flex justify-between items-center p-4 border rounded-lg">
+                      {editingService?.id === service.id ? (
+                        <div className="flex-1 grid grid-cols-3 gap-4">
+                          <Input
+                            value={editingService.name}
+                            onChange={(e) => setEditingService({...editingService, name: e.target.value})}
+                            placeholder="Nome do serviço"
+                          />
+                          <Input
+                            type="number"
+                            value={editingService.price}
+                            onChange={(e) => setEditingService({...editingService, price: Number(e.target.value)})}
+                            placeholder="Preço"
+                          />
+                          <Input
+                            type="number"
+                            value={editingService.duration}
+                            onChange={(e) => setEditingService({...editingService, duration: Number(e.target.value)})}
+                            placeholder="Duração"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{service.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {service.duration} minutos - R$ {service.price.toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex space-x-2">
+                        {editingService?.id === service.id ? (
+                          <>
+                            <Button onClick={updateService} size="sm">
+                              Salvar
+                            </Button>
+                            <Button 
+                              onClick={() => setEditingService(null)} 
+                              variant="outline" 
+                              size="sm"
+                            >
+                              Cancelar
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button 
+                              onClick={() => setEditingService(service)} 
+                              variant="outline" 
+                              size="sm"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              onClick={() => deleteService(service.id)} 
+                              variant="destructive" 
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
