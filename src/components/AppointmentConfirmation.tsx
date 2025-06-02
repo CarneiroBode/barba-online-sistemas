@@ -2,12 +2,20 @@
 import { Button } from "@/components/ui/button";
 import { Service } from "@/pages/Index";
 
+interface CompanyInfo {
+  name: string;
+  address: string;
+  phone: string;
+  professionalName: string;
+}
+
 interface AppointmentConfirmationProps {
   clientName: string;
   service: Service;
   date: string;
   time: string;
-  barber: string;
+  professional: string;
+  companyInfo: CompanyInfo;
   onConfirm: () => void;
   onNewAppointment: () => void;
   onMyAppointments: () => void;
@@ -18,7 +26,8 @@ const AppointmentConfirmation = ({
   service, 
   date, 
   time, 
-  barber, 
+  professional,
+  companyInfo,
   onConfirm,
   onNewAppointment,
   onMyAppointments 
@@ -41,9 +50,9 @@ const AppointmentConfirmation = ({
     const startDate = new Date(`${date}T${time}:00`);
     const endDate = new Date(startDate.getTime() + service.duration * 60000);
     
-    const title = `${service.name} - ${barber}`;
-    const details = `Agendamento na Barbearia Doutor da Barba\nServiço: ${service.name}\nProfissional: ${barber}\nValor: R$ ${service.price.toFixed(2)}`;
-    const location = 'Rua Gama Rosa, 197 - Loja F - Ed. Maria Tereza';
+    const title = `${service.name} - ${professional}`;
+    const details = `Agendamento na ${companyInfo.name}\nServiço: ${service.name}\nProfissional: ${professional}\nValor: R$ ${service.price.toFixed(2)}`;
+    const location = companyInfo.address || 'Local a confirmar';
     
     const startStr = startDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -57,7 +66,7 @@ const AppointmentConfirmation = ({
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-md mx-auto pt-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-6">MEUS AGENDAMENTOS</h1>
+          <h1 className="text-2xl font-bold mb-6">{companyInfo.name}</h1>
           
           <div className="bg-gray-600 rounded-xl p-1 mb-6 inline-block">
             <span className="text-white px-3 py-1">Perfeito....</span>
@@ -65,7 +74,7 @@ const AppointmentConfirmation = ({
 
           <div className="bg-amber-700 rounded-2xl p-6 mb-6">
             <p className="text-lg">
-              Agendamento realizado: {service.name} - (R$ {service.price.toFixed(2)}), com o(a) {barber} no(a) {formatDate(date)} às {time}. O local é o de sempre Rua Gama Rosa, 197 - Loja F - Ed. Maria Tereza.
+              Agendamento realizado: {service.name} - (R$ {service.price.toFixed(2)}), com {professional} no(a) {formatDate(date)} às {time}. {companyInfo.address && `O local é ${companyInfo.address}.`}
             </p>
           </div>
 

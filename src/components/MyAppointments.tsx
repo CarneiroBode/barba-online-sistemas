@@ -111,7 +111,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                       <p className="text-white text-sm">{formatDate(appointment.date)} às {appointment.time}</p>
                       <h3 className="text-white text-xl font-bold mt-2">{appointment.clientName}</h3>
                       <p className="text-gray-300 text-lg">{appointment.service.name.toUpperCase()}</p>
-                      <p className="text-gray-400">PROFISSIONAL: {appointment.barber.toUpperCase()}</p>
+                      <p className="text-gray-400">PROFISSIONAL: {appointment.professional.toUpperCase()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-white text-xl font-bold">R$ {appointment.service.price.toFixed(2)}</p>
