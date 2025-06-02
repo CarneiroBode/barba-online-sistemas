@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -155,10 +156,10 @@ const Index = () => {
         setIsAuthenticated(true);
         setIsNewClient(false);
         setStep('welcome');
-
+        
         // Gerar link seguro para o usuário
         const secureLink = generateSecureLink(clientPhone, newSecurityCode);
-
+        
         toast({
           title: `Bem-vindo, ${nameInput}!`,
           description: "Usuário registrado com sucesso!",
@@ -219,9 +220,9 @@ const Index = () => {
           secureLink: generateSecureLink(clientPhone, securityCode),
           timestamp: new Date().toISOString()
         };
-
+        
         console.log('Enviando para webhook n8n:', webhookData);
-
+        
         toast({
           title: "Agendamento confirmado!",
           description: `${selectedService.name} agendado para ${selectedDate} às ${selectedTime}`,
@@ -244,7 +245,7 @@ const Index = () => {
     );
     setAppointments(updatedAppointments);
     localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
-
+    
     toast({
       title: "Agendamento cancelado",
       description: "Seu horário foi cancelado com sucesso.",
@@ -288,11 +289,6 @@ const Index = () => {
                   Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar seus agendamentos.
                 </p>
               </div>
-            <div className="bg-blue-800 rounded-2xl p-4 mb-4 text-sm">
-              <p className="font-bold mb-2">🧪 Para testar o sistema:</p>
-              <p className="mb-1">URL de teste: <code className="bg-gray-700 px-2 py-1 rounded">?test=true&phone=5511999999999</code></p>
-              <p className="text-xs text-gray-300">Isso criará um usuário de teste e mostrará o link seguro no console.</p>
-            </div>
             )}
           </div>
         </div>
