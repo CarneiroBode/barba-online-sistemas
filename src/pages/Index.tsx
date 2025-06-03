@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, useParams, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -125,7 +124,7 @@ const Index = () => {
   useEffect(() => {
     const initializeApp = async () => {
       const extractedCompanyId = extractCompanyId();
-      
+
       if (!extractedCompanyId) {
         // URL sem company_id - mostrar erro
         toast({
@@ -213,10 +212,10 @@ const Index = () => {
         setIsAuthenticated(true);
         setIsNewClient(false);
         setStep('welcome');
-        
+
         // Gerar link seguro para o usuário
         const secureLink = generateSecureLink(clientPhone, newSecurityCode);
-        
+
         toast({
           title: `Bem-vindo, ${nameInput}!`,
           description: "Usuário registrado com sucesso!",
@@ -279,9 +278,9 @@ const Index = () => {
           secureLink: generateSecureLink(clientPhone, securityCode),
           timestamp: new Date().toISOString()
         };
-        
+
         console.log('Enviando para webhook n8n:', webhookData);
-        
+
         toast({
           title: "Agendamento confirmado!",
           description: `${selectedService.name} agendado para ${selectedDate} às ${selectedTime}`,
@@ -304,7 +303,7 @@ const Index = () => {
     );
     setAppointments(updatedAppointments);
     localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
-    
+
     toast({
       title: "Agendamento cancelado",
       description: "Seu horário foi cancelado com sucesso.",
@@ -356,7 +355,15 @@ const Index = () => {
   }
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="max-w-md mx-auto text-center">
+          <p className="text-lg text-gray-300">
+            Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar seus agendamentos.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
