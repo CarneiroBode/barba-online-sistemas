@@ -179,6 +179,59 @@ export const saveAppointmentToSupabase = async (appointment: any, whatsapp: stri
   }
 };
 
+// Inserir dados de teste para empresa específica
+export const insertTestData = async () => {
+  try {
+    // Primeiro verificar se a empresa existe, se não, criar
+    const { data: companyExists, error: companyError } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', 'asdasd_016502')
+      .single();
+
+    if (companyError && companyError.code === 'PGRST116') {
+      // Empresa não existe, criar
+      const { error: createCompanyError } = await supabase
+        .from('companies')
+        .insert({
+          id: 'asdasd_016502',
+          name: 'Empresa Teste',
+          created_at: new Date().toISOString()
+        });
+
+      if (createCompanyError) {
+        console.error('Erro ao criar empresa:', createCompanyError);
+        throw createCompanyError;
+      }
+    }
+
+    // Inserir dados de autenticação
+    const { data, error } = await supabase
+      .from('user_auth')
+      .upsert({
+        whatsapp: '27981172769',
+        name: 'Usuário Teste',
+        securitycode: 'MSX666',
+        company_id: 'asdasd_016502'
+      }, {
+        onConflict: 'whatsapp'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao inserir dados de teste:', error);
+      throw error;
+    }
+
+    console.log('Dados de teste inseridos com sucesso:', data);
+    return data;
+  } catch (error) {
+    console.error('Erro na inserção de dados de teste:', error);
+    throw error;
+  }
+};
+
 // Gerar link seguro para agendamento
 export const generateSecureLink = (whatsapp: string, securityCode: string, companyId?: string): string => {
   const baseUrl = window.location.origin;
