@@ -141,8 +141,8 @@ CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON appointments
 INSERT INTO companies (id, name, active) VALUES 
 ('1', 'Empresa Exemplo 1', true),
 ('2', 'Empresa Exemplo 2', true),
-('3', 'Clínica Médica ABC', true),
-('4', 'Salão de Beleza XYZ', true);
+('ABC123', 'Clínica Médica ABC', true),
+('XYZ789', 'Salão de Beleza XYZ', true);
 
 -- Inserir usuários da empresa
 INSERT INTO company_users (company_id, name, email, phone, role) VALUES 

@@ -26,7 +26,7 @@ export class MemStorage implements IStorage {
     this.companies = new Map();
     this.currentId = 1;
     this.currentUrlValidationId = 1;
-    
+
     // Add a default company for testing
     const defaultCompany: Company = {
       id: "1",
