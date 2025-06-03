@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2, Eye, EyeOff, Copy } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Plus, Edit, Trash2, Building } from "lucide-react";
 
 interface AdminUser {
   id: string;
@@ -26,64 +26,68 @@ interface UserManagementProps {
 }
 
 const UserManagement = ({ currentUser }: UserManagementProps) => {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [newUser, setNewUser] = useState({ 
-    username: '', 
-    password: '', 
-    companyName: '', 
-    address: '', 
-    cpfCnpj: '', 
-    whatsapp: '', 
-    socialMedia: '' 
-  });
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string | null }>({ open: false, userId: null });
   const { toast } = useToast();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    companyName: '',
+    address: '',
+    cpfCnpj: '',
+    whatsapp: '',
+    socialMedia: ''
+  });
 
   useEffect(() => {
     loadUsers();
   }, []);
 
-  const generateCompanyId = (): string => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
-  const generateClientLink = (companyId: string): string => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/${companyId}`;
-  };
-
   const loadUsers = () => {
-    const saved = localStorage.getItem('adminUsers');
-    if (saved) {
-      const allUsers = JSON.parse(saved);
-      // Filtrar apenas clientes se não for superadmin
-      const filteredUsers = currentUser.role === 'superadmin' 
-        ? allUsers 
-        : allUsers.filter((u: AdminUser) => u.id === currentUser.id);
-      setUsers(filteredUsers);
+    const savedUsers = localStorage.getItem('adminUsers');
+    if (savedUsers) {
+      setUsers(JSON.parse(savedUsers));
     }
   };
 
-  const saveUsers = (updatedUsers: AdminUser[]) => {
-    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers.filter(u => currentUser.role === 'superadmin' || u.id === currentUser.id));
+  const resetForm = () => {
+    setNewUser({
+      username: '',
+      password: '',
+      companyName: '',
+      address: '',
+      cpfCnpj: '',
+      whatsapp: '',
+      socialMedia: ''
+    });
+    setEditingUser(null);
+  };
+
+  const generateCompanyId = (companyName: string): string => {
+    const cleanName = companyName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9]/g, '') // Remove caracteres especiais
+      .substring(0, 10); // Limita a 10 caracteres
+
+    const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos do timestamp
+    return `${cleanName}_${timestamp}`;
   };
 
   const addUser = () => {
-    if (!newUser.username.trim() || !newUser.password.trim() || !newUser.companyName.trim() || !newUser.cpfCnpj.trim() || !newUser.whatsapp.trim()) {
+    if (!newUser.username || !newUser.password || !newUser.companyName) {
       toast({
         title: "Erro",
-        description: "Username, senha, nome da empresa, CPF/CNPJ e WhatsApp são obrigatórios.",
+        description: "Preencha todos os campos obrigatórios.",
         variant: "destructive"
       });
       return;
     }
 
-    const allUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-
-    if (allUsers.find((u: AdminUser) => u.username === newUser.username)) {
+    // Verificar se username já existe
+    if (users.some(user => user.username === newUser.username)) {
       toast({
         title: "Erro",
         description: "Nome de usuário já existe.",
@@ -92,7 +96,8 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       return;
     }
 
-    const companyId = generateCompanyId();
+    const companyId = generateCompanyId(newUser.companyName);
+
     const user: AdminUser = {
       id: Date.now().toString(),
       username: newUser.username,
@@ -107,311 +112,296 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       createdAt: new Date().toISOString()
     };
 
-    const updatedUsers = [...allUsers, user];
-    saveUsers(updatedUsers);
-    setNewUser({ username: '', password: '', companyName: '', address: '', cpfCnpj: '', whatsapp: '', socialMedia: '' });
+    const updatedUsers = [...users, user];
+    setUsers(updatedUsers);
+    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
+
+    // Criar dados iniciais da empresa
+    const companyInfo = {
+      name: newUser.companyName,
+      address: newUser.address,
+      phone: newUser.whatsapp,
+      professionalName: '',
+      cpfCnpj: newUser.cpfCnpj,
+      whatsapp: newUser.whatsapp,
+      socialMedia: newUser.socialMedia,
+      companyId: companyId
+    };
+
+    localStorage.setItem(`${companyId}_companyInfo`, JSON.stringify(companyInfo));
 
     toast({
-      title: "Cliente criado!",
-      description: `Cliente ${newUser.companyName} foi criado com sucesso.`,
+      title: "Empresa criada!",
+      description: `${newUser.companyName} foi criada com sucesso. ID: ${companyId}`,
     });
+
+    resetForm();
+    setIsDialogOpen(false);
   };
 
   const updateUser = () => {
     if (!editingUser) return;
 
-    const allUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    const updatedUsers = allUsers.map((u: AdminUser) => 
-      u.id === editingUser.id ? editingUser : u
+    const updatedUsers = users.map(user => 
+      user.id === editingUser.id ? editingUser : user
     );
+    setUsers(updatedUsers);
+    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
 
-    saveUsers(updatedUsers);
-    setEditingUser(null);
+    // Atualizar dados da empresa também
+    const companyInfo = {
+      name: editingUser.companyName || '',
+      address: editingUser.address || '',
+      phone: editingUser.whatsapp || '',
+      professionalName: '',
+      cpfCnpj: editingUser.cpfCnpj || '',
+      whatsapp: editingUser.whatsapp || '',
+      socialMedia: editingUser.socialMedia || '',
+      companyId: editingUser.companyId || ''
+    };
+
+    if (editingUser.companyId) {
+      localStorage.setItem(`${editingUser.companyId}_companyInfo`, JSON.stringify(companyInfo));
+    }
 
     toast({
-      title: "Cliente atualizado!",
-      description: "Informações atualizadas com sucesso.",
+      title: "Empresa atualizada!",
+      description: `${editingUser.companyName} foi atualizada com sucesso.`,
     });
+
+    resetForm();
+    setIsDialogOpen(false);
   };
 
   const deleteUser = (userId: string) => {
-    const allUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    const updatedUsers = allUsers.filter((u: AdminUser) => u.id !== userId);
-    saveUsers(updatedUsers);
-    setDeleteDialog({ open: false, userId: null });
+    const updatedUsers = users.filter(user => user.id !== userId);
+    setUsers(updatedUsers);
+    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
 
     toast({
-      title: "Cliente removido!",
-      description: "Cliente foi removido com sucesso.",
+      title: "Empresa removida!",
+      description: "A empresa foi removida com sucesso.",
     });
   };
 
-  const togglePasswordVisibility = (userId: string) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
+  const openEditDialog = (user: AdminUser) => {
+    setEditingUser(user);
+    setIsDialogOpen(true);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado!",
-      description: "Link copiado para a área de transferência.",
-    });
+  const openAddDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
   };
-
-  const clientUsers = users.filter(u => u.role === 'client');
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Cadastrar Nova Empresa</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Cadastre uma nova empresa que poderá gerenciar seus agendamentos
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="new-username">Username (Login)</Label>
-              <Input
-                id="new-username"
-                value={newUser.username}
-                onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-                placeholder="Ex: empresa123"
-              />
-            </div>
-            <div>
-              <Label htmlFor="new-password">Senha</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newUser.password}
-                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                placeholder="Digite a senha"
-              />
-            </div>
-            <div>
-              <Label htmlFor="company-name">Nome da Empresa</Label>
-              <Input
-                id="company-name"
-                value={newUser.companyName}
-                onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
-                placeholder="Ex: Salão Beleza & Arte"
-                required
-              />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Esta empresa poderá gerenciar agendamentos de seus clientes
-                </p>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Gerenciar Empresas do Sistema</h2>
+        <Button onClick={openAddDialog}>
+          <Plus className="w-4 h-4 mr-2" />
+          Adicionar Empresa
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {users.filter(user => user.role === 'client').map((user) => (
+          <Card key={user.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="w-5 h-5" />
+                {user.companyName}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="text-sm">
+                <strong>Company ID:</strong>
+                <div className="bg-blue-50 p-2 rounded border font-mono text-blue-800 mt-1">
+                  {user.companyId}
+                </div>
               </div>
+              <div className="text-sm">
+                <strong>Usuário:</strong> {user.username}
+              </div>
+              {user.cpfCnpj && (
+                <div className="text-sm">
+                  <strong>CPF/CNPJ:</strong> {user.cpfCnpj}
+                </div>
+              )}
+              {user.whatsapp && (
+                <div className="text-sm">
+                  <strong>WhatsApp:</strong> {user.whatsapp}
+                </div>
+              )}
+              {user.address && (
+                <div className="text-sm">
+                  <strong>Endereço:</strong> {user.address}
+                </div>
+              )}
+              {user.socialMedia && (
+                <div className="text-sm">
+                  <strong>Rede Social:</strong> {user.socialMedia}
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">
+                Criado em: {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+              </div>
+              <div className="flex space-x-2 pt-2">
+                <Button 
+                  onClick={() => openEditDialog(user)} 
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Editar
+                </Button>
+                <Button 
+                  onClick={() => deleteUser(user.id)} 
+                  variant="destructive" 
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Excluir
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {users.filter(user => user.role === 'client').length === 0 && (
+        <Card>
+          <CardContent className="text-center py-6">
+            <Building className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Nenhuma empresa cadastrada ainda.</p>
+            <Button onClick={openAddDialog} className="mt-4">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeira Empresa
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingUser ? 'Editar Empresa' : 'Adicionar Nova Empresa'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="username">Nome de Usuário *</Label>
+                <Input
+                  id="username"
+                  value={editingUser ? editingUser.username : newUser.username}
+                  onChange={(e) => editingUser 
+                    ? setEditingUser({...editingUser, username: e.target.value})
+                    : setNewUser({...newUser, username: e.target.value})
+                  }
+                  placeholder="usuario_empresa"
+                  disabled={!!editingUser}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password">Senha *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={editingUser ? editingUser.password : newUser.password}
+                  onChange={(e) => editingUser 
+                    ? setEditingUser({...editingUser, password: e.target.value})
+                    : setNewUser({...newUser, password: e.target.value})
+                  }
+                  placeholder="senha123"
+                />
+              </div>
+            </div>
+
             <div>
-              <Label htmlFor="new-address">Endereço</Label>
+              <Label htmlFor="companyName">Nome da Empresa *</Label>
               <Input
-                id="new-address"
-                value={newUser.address}
-                onChange={(e) => setNewUser({...newUser, address: e.target.value})}
-                placeholder="Ex: Rua das Flores, 123 - Centro"
+                id="companyName"
+                value={editingUser ? editingUser.companyName || '' : newUser.companyName}
+                onChange={(e) => editingUser 
+                  ? setEditingUser({...editingUser, companyName: e.target.value})
+                  : setNewUser({...newUser, companyName: e.target.value})
+                }
+                placeholder="Minha Empresa Ltda"
               />
             </div>
+
+            {editingUser && editingUser.companyId && (
+              <div>
+                <Label>Company ID (não pode ser alterado)</Label>
+                <div className="bg-gray-50 p-3 rounded border font-mono text-gray-600 mt-1">
+                  {editingUser.companyId}
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="new-cpfcnpj">CPF/CNPJ</Label>
+              <Label htmlFor="cpfCnpj">CPF/CNPJ</Label>
               <Input
-                id="new-cpfcnpj"
-                value={newUser.cpfCnpj}
-                onChange={(e) => setNewUser({...newUser, cpfCnpj: e.target.value})}
-                placeholder="Ex: 12.345.678/0001-90"
+                id="cpfCnpj"
+                value={editingUser ? editingUser.cpfCnpj || '' : newUser.cpfCnpj}
+                onChange={(e) => editingUser 
+                  ? setEditingUser({...editingUser, cpfCnpj: e.target.value})
+                  : setNewUser({...newUser, cpfCnpj: e.target.value})
+                }
+                placeholder="00.000.000/0001-00"
               />
             </div>
+
             <div>
-              <Label htmlFor="new-whatsapp">WhatsApp</Label>
+              <Label htmlFor="whatsapp">WhatsApp</Label>
               <Input
-                id="new-whatsapp"
-                value={newUser.whatsapp}
-                onChange={(e) => setNewUser({...newUser, whatsapp: e.target.value})}
-                placeholder="Ex: (11) 99999-9999"
+                id="whatsapp"
+                value={editingUser ? editingUser.whatsapp || '' : newUser.whatsapp}
+                onChange={(e) => editingUser 
+                  ? setEditingUser({...editingUser, whatsapp: e.target.value})
+                  : setNewUser({...newUser, whatsapp: e.target.value})
+                }
+                placeholder="(11) 99999-9999"
               />
             </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="new-social">Redes Sociais</Label>
+
+            <div>
+              <Label htmlFor="address">Endereço</Label>
               <Input
-                id="new-social"
-                value={newUser.socialMedia}
-                onChange={(e) => setNewUser({...newUser, socialMedia: e.target.value})}
-                placeholder="Ex: @empresa_instagram, Facebook: Empresa"
+                id="address"
+                value={editingUser ? editingUser.address || '' : newUser.address}
+                onChange={(e) => editingUser 
+                  ? setEditingUser({...editingUser, address: e.target.value})
+                  : setNewUser({...newUser, address: e.target.value})
+                }
+                placeholder="Rua das Flores, 123 - Centro"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="socialMedia">Rede Social</Label>
+              <Input
+                id="socialMedia"
+                value={editingUser ? editingUser.socialMedia || '' : newUser.socialMedia}
+                onChange={(e) => editingUser 
+                  ? setEditingUser({...editingUser, socialMedia: e.target.value})
+                  : setNewUser({...newUser, socialMedia: e.target.value})
+                }
+                placeholder="@minhaempresa"
               />
             </div>
           </div>
-          <Button onClick={addUser} className="w-full">
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Cliente
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciar Empresas do Sistema</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Empresas cadastradas que podem gerenciar agendamentos de seus clientes
-          </p>
-        </CardHeader>
-        <CardContent>
-          {clientUsers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum cliente cadastrado ainda.</p>
-          ) : (
-            <div className="space-y-4">
-              {clientUsers.map((user) => (
-                <div key={user.id} className="border rounded-lg p-4">
-                  {editingUser?.id === user.id ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Username</Label>
-                          <Input
-                            value={editingUser.username}
-                            onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>Senha</Label>
-                          <Input
-                            type="password"
-                            value={editingUser.password}
-                            onChange={(e) => setEditingUser({...editingUser, password: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>Nome da Empresa</Label>
-                          <Input
-                            value={editingUser.companyName || ''}
-                            onChange={(e) => setEditingUser({...editingUser, companyName: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>Endereço</Label>
-                          <Input
-                            value={editingUser.address || ''}
-                            onChange={(e) => setEditingUser({...editingUser, address: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>CPF/CNPJ</Label>
-                          <Input
-                            value={editingUser.cpfCnpj || ''}
-                            onChange={(e) => setEditingUser({...editingUser, cpfCnpj: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>WhatsApp</Label>
-                          <Input
-                            value={editingUser.whatsapp || ''}
-                            onChange={(e) => setEditingUser({...editingUser, whatsapp: e.target.value})}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label>Redes Sociais</Label>
-                          <Input
-                            value={editingUser.socialMedia || ''}
-                            onChange={(e) => setEditingUser({...editingUser, socialMedia: e.target.value})}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button onClick={updateUser} size="sm">
-                          Salvar
-                        </Button>
-                        <Button 
-                          onClick={() => setEditingUser(null)} 
-                          variant="outline" 
-                          size="sm"
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h3 className="font-semibold text-lg">{user.companyName}</h3>
-                            <p className="text-sm text-muted-foreground">Username: {user.username}</p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-sm text-muted-foreground">Senha:</span>
-                              <span className="text-sm font-mono">
-                                {showPasswords[user.id] ? user.password : '••••••••'}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => togglePasswordVisibility(user.id)}
-                                className="h-6 w-6 p-0"
-                              >
-                                {showPasswords[user.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm"><strong>CPF/CNPJ:</strong> {user.cpfCnpj}</p>
-                            <p className="text-sm"><strong>WhatsApp:</strong> {user.whatsapp}</p>
-                            <p className="text-sm"><strong>Endereço:</strong> {user.address}</p>
-                            {user.socialMedia && (
-                              <p className="text-sm"><strong>Redes Sociais:</strong> {user.socialMedia}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            onClick={() => setEditingUser(user)} 
-                            variant="outline" 
-                            size="sm"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            onClick={() => setDeleteDialog({ open: true, userId: user.id })} 
-                            variant="destructive" 
-                            size="sm"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, userId: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remover Cliente</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita e todos os dados da empresa serão perdidos.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialog({ open: false, userId: null })}
-              className="flex-1"
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              onClick={() => deleteDialog.userId && deleteUser(deleteDialog.userId)}
-              variant="destructive"
-              className="flex-1"
-            >
-              Remover
+            <Button onClick={editingUser ? updateUser : addUser}>
+              {editingUser ? 'Atualizar' : 'Criar'} Empresa
             </Button>
           </DialogFooter>
         </DialogContent>

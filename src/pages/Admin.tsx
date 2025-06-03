@@ -17,6 +17,10 @@ interface CompanyInfo {
   address: string;
   phone: string;
   professionalName: string;
+  cpfCnpj?: string;
+  whatsapp?: string;
+  socialMedia?: string;
+  companyId?: string;
 }
 
 interface AdminUser {
@@ -93,11 +97,29 @@ const Admin = () => {
     if (savedCompanyInfo) {
       setCompanyInfo(JSON.parse(savedCompanyInfo));
     } else if (currentUser?.role === 'client') {
-      // Para clientes, usar o nome da empresa do perfil como padrão
-      setCompanyInfo(prev => ({
-        ...prev,
-        name: currentUser.companyName || ''
-      }));
+      // Para clientes, buscar dados da empresa dos dados do usuário
+      const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+      const userCompany = adminUsers.find((user: any) => user.companyId === currentUser.companyId);
+      
+      if (userCompany) {
+        setCompanyInfo({
+          name: userCompany.companyName || '',
+          address: userCompany.address || '',
+          phone: userCompany.whatsapp || '',
+          professionalName: '',
+          cpfCnpj: userCompany.cpfCnpj || '',
+          whatsapp: userCompany.whatsapp || '',
+          socialMedia: userCompany.socialMedia || '',
+          companyId: userCompany.companyId || ''
+        });
+      } else {
+        // Fallback para dados básicos
+        setCompanyInfo(prev => ({
+          ...prev,
+          name: currentUser.companyName || '',
+          companyId: currentUser.companyId || ''
+        }));
+      }
     }
   };
 
@@ -333,6 +355,17 @@ const Admin = () => {
               <CardTitle>Informações da Empresa</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Company ID em destaque */}
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <Label className="text-blue-800 font-semibold">Company ID (não pode ser alterado)</Label>
+                <div className="bg-white p-3 rounded border font-mono text-blue-900 font-bold text-lg mt-2">
+                  {currentUser.companyId}
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  Este é o identificador único da sua empresa no sistema
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="company-name">Nome da Empresa/Estabelecimento</Label>
                 <Input
@@ -342,6 +375,17 @@ const Admin = () => {
                   placeholder="Ex: Salão Beleza & Arte"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="cpf-cnpj">CPF/CNPJ</Label>
+                <Input
+                  id="cpf-cnpj"
+                  value={companyInfo.cpfCnpj || ''}
+                  onChange={(e) => setCompanyInfo({...companyInfo, cpfCnpj: e.target.value})}
+                  placeholder="Ex: 00.000.000/0001-00"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="professional-name">Nome do Profissional</Label>
                 <Input
@@ -351,6 +395,7 @@ const Admin = () => {
                   placeholder="Ex: Maria Silva"
                 />
               </div>
+
               <div>
                 <Label htmlFor="company-address">Endereço</Label>
                 <Input
@@ -360,6 +405,7 @@ const Admin = () => {
                   placeholder="Ex: Rua das Flores, 123 - Centro"
                 />
               </div>
+
               <div>
                 <Label htmlFor="company-phone">Telefone</Label>
                 <Input
@@ -369,6 +415,27 @@ const Admin = () => {
                   placeholder="Ex: (11) 99999-9999"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Input
+                  id="whatsapp"
+                  value={companyInfo.whatsapp || ''}
+                  onChange={(e) => setCompanyInfo({...companyInfo, whatsapp: e.target.value})}
+                  placeholder="Ex: (11) 99999-9999"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="social-media">Rede Social</Label>
+                <Input
+                  id="social-media"
+                  value={companyInfo.socialMedia || ''}
+                  onChange={(e) => setCompanyInfo({...companyInfo, socialMedia: e.target.value})}
+                  placeholder="Ex: @minhaempresa"
+                />
+              </div>
+
               <Button onClick={saveCompanyInfo} className="w-full">
                 Salvar Informações
               </Button>
