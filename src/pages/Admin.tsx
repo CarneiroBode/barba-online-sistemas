@@ -26,6 +26,10 @@ interface AdminUser {
   role: 'superadmin' | 'client';
   companyName?: string;
   companyId?: string;
+  address?: string;
+  cpfCnpj?: string;
+  whatsapp?: string;
+  socialMedia?: string;
   createdAt: string;
 }
 
@@ -40,7 +44,7 @@ const Admin = () => {
     phone: '',
     professionalName: ''
   });
-  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company' | 'users' | 'calendar' | 'hours'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company' | 'users' | 'calendar' | 'hours'>(currentUser?.role === 'superadmin' ? 'users' : 'dashboard');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   // Estados para edição de serviços
@@ -55,7 +59,11 @@ const Admin = () => {
 
   useEffect(() => {
     if (currentUser) {
-      loadUserData();
+      if (currentUser.role === 'client') {
+        loadUserData();
+      }
+      // Ajustar view inicial baseada no tipo de usuário
+      setView(currentUser.role === 'superadmin' ? 'users' : 'dashboard');
     }
   }, [currentUser]);
 
@@ -228,7 +236,7 @@ const Admin = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
-            {currentUser.role === 'superadmin' ? 'Painel Super Admin' : companyInfo.name || 'Painel Administrativo'}
+            {currentUser.role === 'superadmin' ? 'Painel Super Admin - Gerenciamento de Clientes' : companyInfo.name || 'Painel Administrativo'}
           </h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
@@ -243,78 +251,83 @@ const Admin = () => {
 
         <div className="flex justify-between items-center mb-6">
           <div className="flex space-x-2 flex-wrap">
-            <Button 
-              variant={view === 'dashboard' ? 'default' : 'outline'}
-              onClick={() => setView('dashboard')}
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button 
-              variant={view === 'calendar' ? 'default' : 'outline'}
-              onClick={() => setView('calendar')}
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendário
-            </Button>
-            <Button 
-              variant={view === 'appointments' ? 'default' : 'outline'}
-              onClick={() => setView('appointments')}
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Agendamentos
-            </Button>
-            <Button 
-              variant={view === 'services' ? 'default' : 'outline'}
-              onClick={() => setView('services')}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Serviços
-            </Button>
-            <Button 
-              variant={view === 'hours' ? 'default' : 'outline'}
-              onClick={() => setView('hours')}
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Horários
-            </Button>
-            <Button 
-              variant={view === 'company' ? 'default' : 'outline'}
-              onClick={() => setView('company')}
-            >
-              <Building className="w-4 h-4 mr-2" />
-              Empresa
-            </Button>
-            {currentUser.role === 'superadmin' && (
+            {currentUser.role === 'superadmin' ? (
               <Button 
                 variant={view === 'users' ? 'default' : 'outline'}
                 onClick={() => setView('users')}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Clientes
+                Gerenciar Clientes
               </Button>
+            ) : (
+              <>
+                <Button 
+                  variant={view === 'dashboard' ? 'default' : 'outline'}
+                  onClick={() => setView('dashboard')}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Dashboard
+                </Button>
+                <Button 
+                  variant={view === 'calendar' ? 'default' : 'outline'}
+                  onClick={() => setView('calendar')}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Calendário
+                </Button>
+                <Button 
+                  variant={view === 'appointments' ? 'default' : 'outline'}
+                  onClick={() => setView('appointments')}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Agendamentos
+                </Button>
+                <Button 
+                  variant={view === 'services' ? 'default' : 'outline'}
+                  onClick={() => setView('services')}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Serviços
+                </Button>
+                <Button 
+                  variant={view === 'hours' ? 'default' : 'outline'}
+                  onClick={() => setView('hours')}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Horários
+                </Button>
+                <Button 
+                  variant={view === 'company' ? 'default' : 'outline'}
+                  onClick={() => setView('company')}
+                >
+                  <Building className="w-4 h-4 mr-2" />
+                  Empresa
+                </Button>
+              </>
             )}
           </div>
         </div>
 
-        {view === 'users' && currentUser.role === 'superadmin' && (
+        {currentUser.role === 'superadmin' ? (
           <UserManagement currentUser={currentUser} />
+        ) : (
+          <>
+            {view === 'calendar' && (
+              <CalendarView
+                appointments={appointments}
+                onDateSelect={setSelectedDate}
+                selectedDate={selectedDate}
+                companyId={currentUser.companyId}
+              />
+            )}
+
+            {view === 'hours' && (
+              <BusinessHours companyId={currentUser.companyId} />
+            )}
+          </>
         )}
 
-        {view === 'calendar' && (
-          <CalendarView
-            appointments={appointments}
-            onDateSelect={setSelectedDate}
-            selectedDate={selectedDate}
-            companyId={currentUser.role === 'client' ? currentUser.companyId : undefined}
-          />
-        )}
-
-        {view === 'hours' && (
-          <BusinessHours companyId={currentUser.role === 'client' ? currentUser.companyId : undefined} />
-        )}
-
-        {view === 'company' && (
+        {view === 'company' && currentUser.role === 'client' && (
           <Card>
             <CardHeader>
               <CardTitle>Informações da Empresa</CardTitle>
@@ -363,7 +376,7 @@ const Admin = () => {
           </Card>
         )}
 
-        {view === 'dashboard' && (
+        {view === 'dashboard' && currentUser.role === 'client' && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <Card>
@@ -450,7 +463,7 @@ const Admin = () => {
           </>
         )}
 
-        {view === 'appointments' && (
+        {view === 'appointments' && currentUser.role === 'client' && (
           <div>
             <div className="mb-6">
               <Label htmlFor="date-picker">Selecionar Data:</Label>
@@ -500,7 +513,7 @@ const Admin = () => {
           </div>
         )}
 
-        {view === 'services' && (
+        {view === 'services' && currentUser.role === 'client' && (
           <div className="space-y-6">
             <Card>
               <CardHeader>

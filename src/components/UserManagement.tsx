@@ -15,6 +15,10 @@ interface AdminUser {
   role: 'superadmin' | 'client';
   companyName?: string;
   companyId?: string;
+  address?: string;
+  cpfCnpj?: string;
+  whatsapp?: string;
+  socialMedia?: string;
   createdAt: string;
 }
 
@@ -24,7 +28,15 @@ interface UserManagementProps {
 
 const UserManagement = ({ currentUser }: UserManagementProps) => {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [newUser, setNewUser] = useState({ username: '', password: '', companyName: '' });
+  const [newUser, setNewUser] = useState({ 
+    username: '', 
+    password: '', 
+    companyName: '', 
+    address: '', 
+    cpfCnpj: '', 
+    whatsapp: '', 
+    socialMedia: '' 
+  });
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string | null }>({ open: false, userId: null });
@@ -61,10 +73,10 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
   };
 
   const addUser = () => {
-    if (!newUser.username.trim() || !newUser.password.trim() || !newUser.companyName.trim()) {
+    if (!newUser.username.trim() || !newUser.password.trim() || !newUser.companyName.trim() || !newUser.cpfCnpj.trim() || !newUser.whatsapp.trim()) {
       toast({
         title: "Erro",
-        description: "Todos os campos são obrigatórios.",
+        description: "Username, senha, nome da empresa, CPF/CNPJ e WhatsApp são obrigatórios.",
         variant: "destructive"
       });
       return;
@@ -89,12 +101,16 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       role: 'client',
       companyName: newUser.companyName,
       companyId: companyId,
+      address: newUser.address,
+      cpfCnpj: newUser.cpfCnpj,
+      whatsapp: newUser.whatsapp,
+      socialMedia: newUser.socialMedia,
       createdAt: new Date().toISOString()
     };
 
     const updatedUsers = [...allUsers, user];
     saveUsers(updatedUsers);
-    setNewUser({ username: '', password: '', companyName: '' });
+    setNewUser({ username: '', password: '', companyName: '', address: '', cpfCnpj: '', whatsapp: '', socialMedia: '' });
     
     toast({
       title: "Cliente criado!",
@@ -148,72 +164,21 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
 
   const clientUsers = users.filter(u => u.role === 'client');
 
-  if (currentUser.role !== 'superadmin') {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Minha Conta</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome da Empresa</Label>
-              <p className="text-lg font-semibold">{currentUser.companyName}</p>
-            </div>
-            <div>
-              <Label>Usuário</Label>
-              <p>{currentUser.username}</p>
-            </div>
-            <div>
-              <Label>Company ID</Label>
-              <p className="font-mono text-sm">{currentUser.companyId}</p>
-            </div>
-            <div>
-              <Label>Link do Cliente</Label>
-              <div className="flex items-center gap-2">
-                <p className="text-sm bg-gray-50 p-2 rounded flex-1 font-mono">
-                  {currentUser.companyId ? generateClientLink(currentUser.companyId) : 'N/A'}
-                </p>
-                {currentUser.companyId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(generateClientLink(currentUser.companyId!))}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div>
-              <Label>Tipo de Conta</Label>
-              <p>Cliente</p>
-            </div>
-            <div>
-              <Label>Criado em</Label>
-              <p>{new Date(currentUser.createdAt).toLocaleDateString('pt-BR')}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Criar Novo Cliente</CardTitle>
+          <CardTitle>Adicionar Novo Cliente</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="new-username">Usuário</Label>
+              <Label htmlFor="new-username">Username (Login)</Label>
               <Input
                 id="new-username"
                 value={newUser.username}
                 onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-                placeholder="Ex: cliente1"
+                placeholder="Ex: empresa123"
               />
             </div>
             <div>
@@ -223,7 +188,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
                 type="password"
                 value={newUser.password}
                 onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                placeholder="Senha do cliente"
+                placeholder="Digite a senha"
               />
             </div>
             <div>
@@ -232,13 +197,49 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
                 id="new-company"
                 value={newUser.companyName}
                 onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
-                placeholder="Ex: Salão Beleza"
+                placeholder="Ex: Salão Beleza & Arte"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-address">Endereço</Label>
+              <Input
+                id="new-address"
+                value={newUser.address}
+                onChange={(e) => setNewUser({...newUser, address: e.target.value})}
+                placeholder="Ex: Rua das Flores, 123 - Centro"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-cpfcnpj">CPF/CNPJ</Label>
+              <Input
+                id="new-cpfcnpj"
+                value={newUser.cpfCnpj}
+                onChange={(e) => setNewUser({...newUser, cpfCnpj: e.target.value})}
+                placeholder="Ex: 12.345.678/0001-90"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-whatsapp">WhatsApp</Label>
+              <Input
+                id="new-whatsapp"
+                value={newUser.whatsapp}
+                onChange={(e) => setNewUser({...newUser, whatsapp: e.target.value})}
+                placeholder="Ex: (11) 99999-9999"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="new-social">Redes Sociais</Label>
+              <Input
+                id="new-social"
+                value={newUser.socialMedia}
+                onChange={(e) => setNewUser({...newUser, socialMedia: e.target.value})}
+                placeholder="Ex: @empresa_instagram, Facebook: Empresa"
               />
             </div>
           </div>
           <Button onClick={addUser} className="w-full">
             <Plus className="w-4 h-4 mr-2" />
-            Criar Cliente
+            Adicionar Cliente
           </Button>
         </CardContent>
       </Card>
@@ -249,78 +250,66 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
         </CardHeader>
         <CardContent>
           {clientUsers.length === 0 ? (
-            <p className="text-gray-500">Nenhum cliente cadastrado.</p>
+            <p className="text-muted-foreground text-center py-8">Nenhum cliente cadastrado ainda.</p>
           ) : (
             <div className="space-y-4">
               {clientUsers.map((user) => (
-                <div key={user.id} className="flex justify-between items-start p-4 border rounded-lg">
+                <div key={user.id} className="border rounded-lg p-4">
                   {editingUser?.id === user.id ? (
-                    <div className="flex-1 grid grid-cols-3 gap-4">
-                      <Input
-                        value={editingUser.username}
-                        onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
-                        placeholder="Usuário"
-                      />
-                      <Input
-                        type="password"
-                        value={editingUser.password}
-                        onChange={(e) => setEditingUser({...editingUser, password: e.target.value})}
-                        placeholder="Senha"
-                      />
-                      <Input
-                        value={editingUser.companyName || ''}
-                        onChange={(e) => setEditingUser({...editingUser, companyName: e.target.value})}
-                        placeholder="Nome da empresa"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{user.companyName}</h3>
-                      <p className="text-sm text-gray-600">
-                        Usuário: {user.username}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span>Senha:</span>
-                        <span>{showPasswords[user.id] ? user.password : '••••••••'}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => togglePasswordVisibility(user.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          {showPasswords[user.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-2">
-                        <span>Company ID: </span>
-                        <span className="font-mono">{user.companyId}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        <span>Link do Cliente: </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs bg-gray-50 p-1 rounded font-mono flex-1">
-                            {user.companyId ? generateClientLink(user.companyId) : 'N/A'}
-                          </span>
-                          {user.companyId && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyToClipboard(generateClientLink(user.companyId!))}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          )}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Username</Label>
+                          <Input
+                            value={editingUser.username}
+                            onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label>Senha</Label>
+                          <Input
+                            type="password"
+                            value={editingUser.password}
+                            onChange={(e) => setEditingUser({...editingUser, password: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label>Nome da Empresa</Label>
+                          <Input
+                            value={editingUser.companyName || ''}
+                            onChange={(e) => setEditingUser({...editingUser, companyName: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label>Endereço</Label>
+                          <Input
+                            value={editingUser.address || ''}
+                            onChange={(e) => setEditingUser({...editingUser, address: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label>CPF/CNPJ</Label>
+                          <Input
+                            value={editingUser.cpfCnpj || ''}
+                            onChange={(e) => setEditingUser({...editingUser, cpfCnpj: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label>WhatsApp</Label>
+                          <Input
+                            value={editingUser.whatsapp || ''}
+                            onChange={(e) => setEditingUser({...editingUser, whatsapp: e.target.value})}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Redes Sociais</Label>
+                          <Input
+                            value={editingUser.socialMedia || ''}
+                            onChange={(e) => setEditingUser({...editingUser, socialMedia: e.target.value})}
+                          />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Criado em: {new Date(user.createdAt).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                  )}
-                  <div className="flex space-x-2 ml-4">
-                    {editingUser?.id === user.id ? (
-                      <>
+                      <div className="flex space-x-2">
                         <Button onClick={updateUser} size="sm">
                           Salvar
                         </Button>
@@ -331,26 +320,77 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
                         >
                           Cancelar
                         </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button 
-                          onClick={() => setEditingUser(user)} 
-                          variant="outline" 
-                          size="sm"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          onClick={() => setDeleteDialog({ open: true, userId: user.id })} 
-                          variant="destructive" 
-                          size="sm"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">{user.companyName}</h3>
+                            <p className="text-sm text-muted-foreground">Username: {user.username}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-sm text-muted-foreground">Senha:</span>
+                              <span className="text-sm font-mono">
+                                {showPasswords[user.id] ? user.password : '••••••••'}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => togglePasswordVisibility(user.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                {showPasswords[user.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-sm"><strong>CPF/CNPJ:</strong> {user.cpfCnpj}</p>
+                            <p className="text-sm"><strong>WhatsApp:</strong> {user.whatsapp}</p>
+                            <p className="text-sm"><strong>Endereço:</strong> {user.address}</p>
+                            {user.socialMedia && (
+                              <p className="text-sm"><strong>Redes Sociais:</strong> {user.socialMedia}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            onClick={() => setEditingUser(user)} 
+                            variant="outline" 
+                            size="sm"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            onClick={() => setDeleteDialog({ open: true, userId: user.id })} 
+                            variant="destructive" 
+                            size="sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Link da Empresa:</p>
+                            <p className="text-sm font-mono text-blue-600">{generateClientLink(user.companyId!)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Company ID: {user.companyId}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => copyToClipboard(generateClientLink(user.companyId!))}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -363,7 +403,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
           <DialogHeader>
             <DialogTitle>Remover Cliente</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.
+              Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita e todos os dados da empresa serão perdidos.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
@@ -379,7 +419,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
               variant="destructive"
               className="flex-1"
             >
-              Confirmar
+              Remover
             </Button>
           </DialogFooter>
         </DialogContent>

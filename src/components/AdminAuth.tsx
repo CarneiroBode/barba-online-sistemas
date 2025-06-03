@@ -13,6 +13,10 @@ interface AdminUser {
   role: 'superadmin' | 'client';
   companyName?: string;
   companyId?: string;
+  address?: string;
+  cpfCnpj?: string;
+  whatsapp?: string;
+  socialMedia?: string;
   createdAt: string;
 }
 
