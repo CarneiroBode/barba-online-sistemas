@@ -1,4 +1,6 @@
 
+import { getBusinessTimeSlots, isBusinessOpen, isTimeSlotValid } from './businessHours';
+
 export const isTimeSlotInFuture = (date: string, time: string): boolean => {
   const now = new Date();
   const slotDateTime = new Date(`${date}T${time}:00`);
@@ -9,34 +11,26 @@ export const isTimeSlotInFuture = (date: string, time: string): boolean => {
   return slotDateTime > minimumTime;
 };
 
-export const getAvailableTimeSlots = (date: string): string[] => {
-  const slots = [];
+export const getAvailableTimeSlots = (date: string, companyId?: string): string[] => {
+  // Verificar se o estabelecimento funciona neste dia
+  if (!isBusinessOpen(date, companyId)) {
+    return [];
+  }
+  
+  // Obter slots baseados nos horários de funcionamento
+  const businessSlots = getBusinessTimeSlots(date, companyId);
+  
   const today = new Date().toISOString().split('T')[0];
   
   // Se for hoje, filtra horários passados
   if (date === today) {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    for (let hour = 8; hour < 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        // Se for uma hora futura ou se for a hora atual mas com minutos futuros (+ margem)
-        if (hour > currentHour || (hour === currentHour && minute > currentMinute + 30)) {
-          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          slots.push(timeString);
-        }
-      }
-    }
-  } else {
-    // Para datas futuras, mostra todos os horários
-    for (let hour = 8; hour < 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
-      }
-    }
+    return businessSlots.filter(time => isTimeSlotInFuture(date, time));
   }
   
-  return slots;
+  // Para datas futuras, retorna todos os slots do horário de funcionamento
+  return businessSlots;
+};
+
+export const isValidTimeSlot = (date: string, time: string, companyId?: string): boolean => {
+  return isTimeSlotValid(date, time, companyId) && isTimeSlotInFuture(date, time);
 };

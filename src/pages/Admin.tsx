@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import AdminAuth from "@/components/AdminAuth";
 import UserManagement from "@/components/UserManagement";
+import CalendarView from "@/components/CalendarView";
+import BusinessHours from "@/components/BusinessHours";
 
 interface CompanyInfo {
   name: string;
@@ -38,8 +40,8 @@ const Admin = () => {
     phone: '',
     professionalName: ''
   });
-  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company' | 'users'>('dashboard');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company' | 'users' | 'calendar' | 'hours'>('dashboard');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   // Estados para edição de serviços
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -218,12 +220,12 @@ const Admin = () => {
   }
 
   const stats = getTodayStats();
-  const dayAppointments = getAppointmentsByDate(selectedDate);
+  const dayAppointments = selectedDate ? getAppointmentsByDate(selectedDate.toISOString().split('T')[0]) : [];
   const todayAppointments = getAppointmentsByDate(new Date().toISOString().split('T')[0]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
             {currentUser.role === 'superadmin' ? 'Painel Super Admin' : companyInfo.name || 'Painel Administrativo'}
@@ -240,13 +242,20 @@ const Admin = () => {
         </div>
 
         <div className="flex justify-between items-center mb-6">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-wrap">
             <Button 
               variant={view === 'dashboard' ? 'default' : 'outline'}
               onClick={() => setView('dashboard')}
             >
               <Calendar className="w-4 h-4 mr-2" />
               Dashboard
+            </Button>
+            <Button 
+              variant={view === 'calendar' ? 'default' : 'outline'}
+              onClick={() => setView('calendar')}
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Calendário
             </Button>
             <Button 
               variant={view === 'appointments' ? 'default' : 'outline'}
@@ -261,6 +270,13 @@ const Admin = () => {
             >
               <Settings className="w-4 h-4 mr-2" />
               Serviços
+            </Button>
+            <Button 
+              variant={view === 'hours' ? 'default' : 'outline'}
+              onClick={() => setView('hours')}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Horários
             </Button>
             <Button 
               variant={view === 'company' ? 'default' : 'outline'}
@@ -283,6 +299,19 @@ const Admin = () => {
 
         {view === 'users' && currentUser.role === 'superadmin' && (
           <UserManagement currentUser={currentUser} />
+        )}
+
+        {view === 'calendar' && (
+          <CalendarView
+            appointments={appointments}
+            onDateSelect={setSelectedDate}
+            selectedDate={selectedDate}
+            companyId={currentUser.role === 'client' ? currentUser.companyId : undefined}
+          />
+        )}
+
+        {view === 'hours' && (
+          <BusinessHours companyId={currentUser.role === 'client' ? currentUser.companyId : undefined} />
         )}
 
         {view === 'company' && (
@@ -428,15 +457,15 @@ const Admin = () => {
               <Input
                 id="date-picker"
                 type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                value={selectedDate?.toISOString().split('T')[0] || ''}
+                onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))}
                 className="max-w-xs"
               />
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>{formatDate(selectedDate)}</CardTitle>
+                <CardTitle>{selectedDate ? formatDate(selectedDate.toISOString().split('T')[0]) : 'Selecione uma data'}</CardTitle>
               </CardHeader>
               <CardContent>
                 {dayAppointments.length === 0 ? (

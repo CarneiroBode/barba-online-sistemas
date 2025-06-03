@@ -5,43 +5,49 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Service, Appointment } from "@/pages/Index";
 import { getAvailableTimeSlots, isTimeSlotInFuture } from "@/utils/timeUtils";
+import { isBusinessOpen } from "@/utils/businessHours";
 
 interface DateTimeSelectionProps {
   service: Service;
   onDateTimeSelect: (date: string, time: string) => void;
   onBack: () => void;
   existingAppointments: Appointment[];
+  companyId?: string;
 }
 
-const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointments }: DateTimeSelectionProps) => {
+const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointments, companyId }: DateTimeSelectionProps) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  // Gerar próximos 7 dias
+  // Gerar próximos 14 dias (2 semanas)
   const generateDates = () => {
     const dates = [];
     const today = new Date();
     
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       
       const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
       const monthNames = ['JAN', 'FEB', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
       
+      const dateString = date.toISOString().split('T')[0];
+      const isOpen = isBusinessOpen(dateString, companyId);
+      
       dates.push({
-        date: date.toISOString().split('T')[0],
+        date: dateString,
         dayName: dayNames[date.getDay()],
         day: date.getDate().toString().padStart(2, '0'),
         month: monthNames[date.getMonth()],
-        fullDate: date
+        fullDate: date,
+        isOpen
       });
     }
     return dates;
   };
 
   const generateTimeSlots = () => {
-    return getAvailableTimeSlots(selectedDate);
+    return getAvailableTimeSlots(selectedDate, companyId);
   };
 
   const isTimeSlotAvailable = (date: string, time: string) => {
@@ -49,7 +55,8 @@ const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointm
     const hasExistingAppointment = existingAppointments.some(apt => 
       apt.date === date && 
       apt.time === time && 
-      apt.status === 'confirmed'
+      apt.status === 'confirmed' &&
+      (companyId ? apt.companyId === companyId : true)
     );
     
     // Verificar se o horário não é no passado
@@ -106,16 +113,21 @@ const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointm
               <Card 
                 key={dateObj.date}
                 className={`min-w-[80px] cursor-pointer transition-colors ${
-                  selectedDate === dateObj.date 
+                  !dateObj.isOpen 
+                    ? 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
+                    : selectedDate === dateObj.date 
                     ? 'bg-amber-700 border-amber-600' 
                     : 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                 }`}
-                onClick={() => setSelectedDate(dateObj.date)}
+                onClick={() => dateObj.isOpen && setSelectedDate(dateObj.date)}
               >
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-gray-300">{dateObj.dayName}</p>
                   <p className="text-2xl font-bold text-white">{dateObj.day}</p>
                   <p className="text-sm text-gray-300">{dateObj.month}</p>
+                  {!dateObj.isOpen && (
+                    <p className="text-xs text-red-400 mt-1">Fechado</p>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -127,34 +139,40 @@ const DateTimeSelection = ({ service, onDateTimeSelect, onBack, existingAppointm
 
         {selectedDate && (
           <div className="mb-8">
-            <div className="grid grid-cols-3 gap-3">
-              {timeSlots.map((time) => {
-                const isAvailable = isTimeSlotAvailable(selectedDate, time);
-                return (
-                  <Button
-                    key={time}
-                    variant={selectedTime === time ? "default" : "outline"}
-                    className={`p-4 rounded-xl text-lg ${
-                      selectedTime === time 
-                        ? 'bg-amber-700 hover:bg-amber-600 border-amber-600' 
-                        : isAvailable 
-                          ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-white' 
-                          : 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'
-                    }`}
-                    onClick={() => isAvailable && setSelectedTime(time)}
-                    disabled={!isAvailable}
-                  >
-                    {time}
-                  </Button>
-                );
-              })}
-            </div>
+            {timeSlots.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Nenhum horário disponível para esta data.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {timeSlots.map((time) => {
+                  const isAvailable = isTimeSlotAvailable(selectedDate, time);
+                  return (
+                    <Button
+                      key={time}
+                      variant={selectedTime === time ? "default" : "outline"}
+                      className={`p-4 rounded-xl text-lg ${
+                        selectedTime === time 
+                          ? 'bg-amber-700 hover:bg-amber-600 border-amber-600' 
+                          : isAvailable 
+                            ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-white' 
+                            : 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'
+                      }`}
+                      onClick={() => isAvailable && setSelectedTime(time)}
+                      disabled={!isAvailable}
+                    >
+                      {time}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {selectedDate && selectedTime && (
           <div className="text-center mb-6">
-            <p className="text-white">{formatSelectedDate()} --</p>
+            <p className="text-white">{formatSelectedDate()} às {selectedTime}</p>
           </div>
         )}
 
