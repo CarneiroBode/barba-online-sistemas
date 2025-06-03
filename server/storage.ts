@@ -7,19 +7,18 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  validateUrlAccess(company_id: number, whatsapp: string, codigo: string): Promise<UrlValidation | undefined>;
+  validateUrlAccess(company_id: string, whatsapp: string, codigo: string): Promise<UrlValidation | undefined>;
   createUrlValidation(validation: InsertUrlValidation): Promise<UrlValidation>;
   markUrlValidationAsUsed(id: number): Promise<void>;
-  getCompany(id: number): Promise<Company | undefined>;
+  getCompany(id: string): Promise<Company | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private urlValidations: Map<number, UrlValidation>;
-  private companies: Map<number, Company>;
+  private companies: Map<string, Company>;
   private currentId: number;
   private currentUrlValidationId: number;
-  private currentCompanyId: number;
 
   constructor() {
     this.users = new Map();
@@ -27,16 +26,14 @@ export class MemStorage implements IStorage {
     this.companies = new Map();
     this.currentId = 1;
     this.currentUrlValidationId = 1;
-    this.currentCompanyId = 1;
     
     // Add a default company for testing
     const defaultCompany: Company = {
-      id: 1,
+      id: "1",
       name: "Empresa Padrão",
       active: true
     };
-    this.companies.set(1, defaultCompany);
-    this.currentCompanyId = 2;
+    this.companies.set("1", defaultCompany);
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -56,7 +53,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async validateUrlAccess(company_id: number, whatsapp: string, codigo: string): Promise<UrlValidation | undefined> {
+  async validateUrlAccess(company_id: string, whatsapp: string, codigo: string): Promise<UrlValidation | undefined> {
     return Array.from(this.urlValidations.values()).find(
       (validation) => 
         validation.company_id === company_id && 
@@ -87,7 +84,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getCompany(id: number): Promise<Company | undefined> {
+  async getCompany(id: string): Promise<Company | undefined> {
     return this.companies.get(id);
   }
 }

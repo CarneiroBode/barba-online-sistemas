@@ -7,7 +7,7 @@ CREATE SCHEMA IF NOT EXISTS public;
 
 -- Criar tabela de empresas
 CREATE TABLE companies (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -17,7 +17,7 @@ CREATE TABLE companies (
 -- Criar tabela de usuários de empresas
 CREATE TABLE company_users (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     email TEXT,
     phone TEXT,
@@ -30,7 +30,7 @@ CREATE TABLE company_users (
 -- Criar tabela de autenticação de usuários
 CREATE TABLE user_auth (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     user_id INTEGER REFERENCES company_users(id) ON DELETE SET NULL,
@@ -43,7 +43,7 @@ CREATE TABLE user_auth (
 -- Criar tabela de horários de funcionamento
 CREATE TABLE business_hours (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6), -- 0=domingo, 6=sábado
     open_time TIME,
     close_time TIME,
@@ -56,7 +56,7 @@ CREATE TABLE business_hours (
 -- Criar tabela de serviços
 CREATE TABLE services (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     duration_minutes INTEGER DEFAULT 60,
@@ -69,7 +69,7 @@ CREATE TABLE services (
 -- Criar tabela de agendamentos
 CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     customer_name TEXT NOT NULL,
     customer_phone TEXT,
@@ -87,7 +87,7 @@ CREATE TABLE appointments (
 -- Criar tabela de validações de URL (sua implementação atual)
 CREATE TABLE url_validations (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     whatsapp TEXT NOT NULL,
     codigo TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -138,46 +138,46 @@ CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON appointments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Inserir dados de exemplo
-INSERT INTO companies (name, active) VALUES 
-('Empresa Exemplo 1', true),
-('Empresa Exemplo 2', true),
-('Clínica Médica ABC', true),
-('Salão de Beleza XYZ', true);
+INSERT INTO companies (id, name, active) VALUES 
+('1', 'Empresa Exemplo 1', true),
+('2', 'Empresa Exemplo 2', true),
+('3', 'Clínica Médica ABC', true),
+('4', 'Salão de Beleza XYZ', true);
 
 -- Inserir usuários da empresa
 INSERT INTO company_users (company_id, name, email, phone, role) VALUES 
-(1, 'Admin Principal', 'admin@empresa1.com', '11999999999', 'admin'),
-(1, 'Atendente 1', 'atendente1@empresa1.com', '11888888888', 'user'),
-(2, 'Gerente', 'gerente@empresa2.com', '11777777777', 'admin');
+('1', 'Admin Principal', 'admin@empresa1.com', '11999999999', 'admin'),
+('1', 'Atendente 1', 'atendente1@empresa1.com', '11888888888', 'user'),
+('2', 'Gerente', 'gerente@empresa2.com', '11777777777', 'admin');
 
 -- Inserir autenticação
 INSERT INTO user_auth (company_id, username, password, user_id) VALUES 
-(1, 'admin1', '$2b$10$exemplo_hash_senha_1', 1),
-(1, 'atendente1', '$2b$10$exemplo_hash_senha_2', 2),
-(2, 'gerente2', '$2b$10$exemplo_hash_senha_3', 3);
+('1', 'admin1', '$2b$10$exemplo_hash_senha_1', 1),
+('1', 'atendente1', '$2b$10$exemplo_hash_senha_2', 2),
+('2', 'gerente2', '$2b$10$exemplo_hash_senha_3', 3);
 
 -- Inserir horários de funcionamento (empresa 1 - segunda a sexta)
 INSERT INTO business_hours (company_id, day_of_week, open_time, close_time, is_closed) VALUES 
-(1, 1, '08:00', '18:00', false), -- Segunda
-(1, 2, '08:00', '18:00', false), -- Terça
-(1, 3, '08:00', '18:00', false), -- Quarta
-(1, 4, '08:00', '18:00', false), -- Quinta
-(1, 5, '08:00', '18:00', false), -- Sexta
-(1, 6, '08:00', '12:00', false), -- Sábado
-(1, 0, null, null, true); -- Domingo fechado
+('1', 1, '08:00', '18:00', false), -- Segunda
+('1', 2, '08:00', '18:00', false), -- Terça
+('1', 3, '08:00', '18:00', false), -- Quarta
+('1', 4, '08:00', '18:00', false), -- Quinta
+('1', 5, '08:00', '18:00', false), -- Sexta
+('1', 6, '08:00', '12:00', false), -- Sábado
+('1', 0, null, null, true); -- Domingo fechado
 
 -- Inserir serviços
 INSERT INTO services (company_id, name, description, duration_minutes, price) VALUES 
-(1, 'Consulta Médica', 'Consulta médica geral', 30, 150.00),
-(1, 'Exame de Rotina', 'Exames laboratoriais básicos', 15, 80.00),
-(2, 'Corte de Cabelo', 'Corte masculino/feminino', 45, 50.00),
-(2, 'Coloração', 'Coloração completa', 120, 200.00);
+('1', 'Consulta Médica', 'Consulta médica geral', 30, 150.00),
+('1', 'Exame de Rotina', 'Exames laboratoriais básicos', 15, 80.00),
+('2', 'Corte de Cabelo', 'Corte masculino/feminino', 45, 50.00),
+('2', 'Coloração', 'Coloração completa', 120, 200.00);
 
 -- Inserir alguns agendamentos de exemplo
 INSERT INTO appointments (company_id, service_id, customer_name, customer_phone, appointment_date, appointment_time, status, created_by) VALUES 
-(1, 1, 'João Silva', '11987654321', CURRENT_DATE + INTERVAL '1 day', '09:00', 'scheduled', 1),
-(1, 2, 'Maria Santos', '11876543210', CURRENT_DATE + INTERVAL '2 days', '14:30', 'confirmed', 1),
-(2, 3, 'Pedro Oliveira', '11765432109', CURRENT_DATE + INTERVAL '1 day', '10:00', 'scheduled', 3);
+('1', 1, 'João Silva', '11987654321', CURRENT_DATE + INTERVAL '1 day', '09:00', 'scheduled', 1),
+('1', 2, 'Maria Santos', '11876543210', CURRENT_DATE + INTERVAL '2 days', '14:30', 'confirmed', 1),
+('2', 3, 'Pedro Oliveira', '11765432109', CURRENT_DATE + INTERVAL '1 day', '10:00', 'scheduled', 3);
 
 -- Políticas de segurança RLS (Row Level Security) - opcional
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;

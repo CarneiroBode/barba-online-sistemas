@@ -14,9 +14,8 @@ async function validateUrlAccess(req: Request, res: Response, next: NextFunction
   }
 
   try {
-    const companyIdNum = parseInt(company_id as string);
     const validation = await storage.validateUrlAccess(
-      companyIdNum, 
+      company_id as string, 
       whatsapp as string, 
       codigo as string
     );
@@ -29,7 +28,7 @@ async function validateUrlAccess(req: Request, res: Response, next: NextFunction
 
     // Armazena os dados validados na requisição para uso posterior
     req.validatedAccess = {
-      company_id: companyIdNum,
+      company_id: company_id as string,
       whatsapp: whatsapp as string,
       codigo: codigo as string,
       validation_id: validation.id
@@ -51,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/generate-url', async (req: Request, res: Response) => {
     try {
       const { company_id, whatsapp, codigo, expires_hours = 24 } = req.body;
-      
+
       if (!company_id || !whatsapp || !codigo) {
         return res.status(400).json({ 
           error: "Campos obrigatórios: company_id, whatsapp, codigo" 
@@ -91,10 +90,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rota protegida de exemplo
   app.get('/api/user-info', async (req: Request, res: Response) => {
     const { company_id, whatsapp, codigo } = req.validatedAccess;
-    
+
     // Aqui você pode buscar informações específicas da empresa/usuário
     const company = await storage.getCompany(company_id);
-    
+
     res.json({
       success: true,
       company: company?.name,
@@ -123,7 +122,7 @@ declare global {
   namespace Express {
     interface Request {
       validatedAccess?: {
-        company_id: number;
+        company_id: string;
         whatsapp: string;
         codigo: string;
         validation_id: number;
