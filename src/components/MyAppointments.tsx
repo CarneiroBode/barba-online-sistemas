@@ -80,18 +80,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
         </div>
 
         {confirmedAppointments.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mb-8">
-              <div className="bg-gray-700 rounded-lg p-4 mb-4 mx-auto max-w-xs">
-                <div className="text-center">
-                  <div className="bg-green-500 text-white px-3 py-1 rounded text-sm inline-block mb-2">10:00 - 11:40 3/24</div>
-                  <div className="text-white font-semibold">Will</div>
-                  <div className="text-gray-300 text-sm">CORTE DEGRADÊ</div>
-                  <div className="text-right text-white font-bold">R$ 20,00</div>
-                </div>
-              </div>
-            </div>
-            
+          <div className="text-center py-12">            
             <h2 className="text-xl font-semibold mb-4">Você não possui agendamentos em aberto.</h2>
             <p className="text-gray-400 mb-8">Realize um agendamento e ele aparecerá aqui!</p>
             
@@ -118,14 +107,16 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                       </div>
                       <div className="text-right">
                         <p className="text-white text-xl font-bold">R$ {appointment.service.price.toFixed(2)}</p>
-                        <Button
-                          onClick={() => handleCancelClick(appointment.id)}
-                          variant="destructive"
-                          size="sm"
-                          className="mt-2"
-                        >
-                          CANCELAR
-                        </Button>
+                        {canCancel && (
+                          <Button
+                            onClick={() => handleCancelClick(appointment.id)}
+                            variant="destructive"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            CANCELAR
+                          </Button>
+                        )}
                       </div>
                     </div>
                     

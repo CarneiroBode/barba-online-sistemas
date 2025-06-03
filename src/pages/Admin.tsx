@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Clock, User, Settings, Building, Plus, Edit, Trash2 } from "lucide-react";
 import { Appointment, Service } from "@/pages/Index";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface CompanyInfo {
   name: string;
@@ -30,6 +31,12 @@ const Admin = () => {
   // Estados para edição de serviços
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [newService, setNewService] = useState({ name: '', price: 0, duration: 30 });
+
+  // Estado para cancelamento de agendamentos
+  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; appointmentId: string | null }>({ 
+    open: false, 
+    appointmentId: null 
+  });
 
   useEffect(() => {
     // Carregar dados do localStorage
@@ -150,8 +157,23 @@ const Admin = () => {
     };
   };
 
+  const cancelAppointment = (appointmentId: string) => {
+    const updatedAppointments = appointments.map(apt => 
+      apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
+    );
+    setAppointments(updatedAppointments);
+    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+    setCancelDialog({ open: false, appointmentId: null });
+    
+    toast({
+      title: "Agendamento cancelado",
+      description: "O agendamento foi cancelado com sucesso.",
+    });
+  };
+
   const stats = getTodayStats();
   const dayAppointments = getAppointmentsByDate(selectedDate);
+  const todayAppointments = getAppointmentsByDate(new Date().toISOString().split('T')[0]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -242,44 +264,91 @@ const Admin = () => {
         )}
 
         {view === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Receita Hoje</CardTitle>
-                <span className="text-lg">💰</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">R$ {stats.revenue.toFixed(2)}</div>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Receita Hoje</CardTitle>
+                  <span className="text-lg">💰</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">R$ {stats.revenue.toFixed(2)}</div>
+                </CardContent>
+              </Card>
 
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Próximo Cliente</CardTitle>
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold">
+                    {stats.nextAppointment ? stats.nextAppointment.clientName : 'Nenhum'}
+                  </div>
+                  {stats.nextAppointment && (
+                    <p className="text-sm text-muted-foreground">
+                      {stats.nextAppointment.time} - {stats.nextAppointment.service.name}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Agendamentos de Hoje */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Próximo Cliente</CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
+              <CardHeader>
+                <CardTitle>Agendamentos de Hoje</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold">
-                  {stats.nextAppointment ? stats.nextAppointment.clientName : 'Nenhum'}
-                </div>
-                {stats.nextAppointment && (
-                  <p className="text-sm text-muted-foreground">
-                    {stats.nextAppointment.time} - {stats.nextAppointment.service.name}
-                  </p>
+                {todayAppointments.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhum agendamento para hoje.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {todayAppointments
+                      .sort((a, b) => a.time.localeCompare(b.time))
+                      .map((appointment) => (
+                        <div key={appointment.id} className="flex justify-between items-center p-4 border rounded-lg">
+                          <div>
+                            <h3 className="font-semibold">{appointment.clientName}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {appointment.service.name} - {appointment.time}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Tel: {appointment.clientPhone}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="font-bold">R$ {appointment.service.price.toFixed(2)}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {appointment.service.duration}min
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => setCancelDialog({ open: true, appointmentId: appointment.id })}
+                              variant="destructive"
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
-          </div>
+          </>
         )}
 
         {view === 'appointments' && (
@@ -454,6 +523,34 @@ const Admin = () => {
           </div>
         )}
       </div>
+
+      {/* Dialog de confirmação para cancelamento */}
+      <Dialog open={cancelDialog.open} onOpenChange={(open) => setCancelDialog({ open, appointmentId: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Agendamento</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialog({ open: false, appointmentId: null })}
+              className="flex-1"
+            >
+              Não
+            </Button>
+            <Button
+              onClick={() => cancelDialog.appointmentId && cancelAppointment(cancelDialog.appointmentId)}
+              variant="destructive"
+              className="flex-1"
+            >
+              Sim, cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

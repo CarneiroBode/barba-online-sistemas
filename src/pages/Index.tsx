@@ -103,7 +103,7 @@ const Index = () => {
             setClientName(user.name);
             setSecurityCode(code);
             setIsAuthenticated(true);
-            setStep('welcome');
+            setStep('service'); // Vai direto para seleção de serviço
             toast({
               title: `Olá, ${user.name}!`,
               description: "Acesso autorizado. Bem-vindo de volta!",
