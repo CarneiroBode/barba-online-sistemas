@@ -357,7 +357,7 @@ const Admin = () => {
               Sair
             </Button>
           </div>
-        </div></div>
+        </div>
 
         <div className="flex justify-between items-center mb-6">
           <div className="flex space-x-2 flex-wrap">
@@ -824,6 +824,9 @@ const Admin = () => {
             <DialogTitle>
               {currentUser?.role === 'superadmin' ? 'Alterar Senha do Super Admin' : 'Alterar Minha Senha'}
             </DialogTitle>
+            <DialogDescription>
+              Digite sua senha atual e a nova senha para alterar.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

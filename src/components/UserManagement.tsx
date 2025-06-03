@@ -292,6 +292,9 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
             <DialogTitle>
               {editingUser ? 'Editar Empresa' : 'Adicionar Nova Empresa'}
             </DialogTitle>
+            <DialogDescription>
+              {editingUser ? 'Atualize as informações da empresa.' : 'Preencha os dados para criar uma nova empresa no sistema.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
