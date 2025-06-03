@@ -61,6 +61,12 @@ const Admin = () => {
     appointmentId: null 
   });
 
+  // Estados para alteração de senha
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+
   useEffect(() => {
     if (currentUser) {
       if (currentUser.role === 'client') {
@@ -244,6 +250,80 @@ const Admin = () => {
     });
   };
 
+  const handleChangePassword = () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+    
+    if (currentUser?.role === 'superadmin') {
+      const superAdmin = adminUsers.find((u: AdminUser) => u.role === 'superadmin');
+      
+      if (!superAdmin || superAdmin.password !== currentPassword) {
+        toast({
+          title: "Erro",
+          description: "Senha atual incorreta.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const updatedUsers = adminUsers.map((user: AdminUser) => 
+        user.role === 'superadmin' ? { ...user, password: newPassword } : user
+      );
+      
+      localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
+      
+      toast({
+        title: "Senha alterada!",
+        description: "Senha do Super Admin alterada com sucesso.",
+      });
+    } else {
+      // Para empresas
+      const companyUser = adminUsers.find((u: AdminUser) => u.id === currentUser?.id);
+      
+      if (!companyUser || companyUser.password !== currentPassword) {
+        toast({
+          title: "Erro",
+          description: "Senha atual incorreta.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const updatedUsers = adminUsers.map((user: AdminUser) => 
+        user.id === currentUser?.id ? { ...user, password: newPassword } : user
+      );
+      
+      localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
+      
+      toast({
+        title: "Senha alterada!",
+        description: "Sua senha foi alterada com sucesso.",
+      });
+    }
+
+    setShowPasswordDialog(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   // Se não estiver logado, mostrar tela de login
   if (!currentUser) {
     return <AdminAuth onLogin={setCurrentUser} />;
@@ -264,12 +344,20 @@ const Admin = () => {
             <span className="text-sm text-gray-600">
               Olá, {currentUser.role === 'superadmin' ? 'Super Admin' : currentUser.companyName}
             </span>
+            <Button 
+              onClick={() => setShowPasswordDialog(true)} 
+              variant="outline" 
+              size="sm"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Alterar Senha
+            </Button>
             <Button onClick={handleLogout} variant="outline" size="sm">
               <LogOut className="w-4 h-4 mr-2" />
               Sair
             </Button>
           </div>
-        </div>
+        </div></div>
 
         <div className="flex justify-between items-center mb-6">
           <div className="flex space-x-2 flex-wrap">
@@ -725,6 +813,56 @@ const Admin = () => {
               className="flex-1"
             >
               Sim, cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {currentUser?.role === 'superadmin' ? 'Alterar Senha do Super Admin' : 'Alterar Minha Senha'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="current-password">Senha Atual</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Digite a senha atual"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-password">Nova Senha</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Digite a nova senha"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirme a nova senha"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleChangePassword}>
+              Alterar Senha
             </Button>
           </DialogFooter>
         </DialogContent>
