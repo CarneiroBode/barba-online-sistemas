@@ -158,12 +158,6 @@ const AdminAuth = ({ onLogin }: AdminAuthProps) => {
           >
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
-          
-          <div className="text-xs text-gray-500 text-center mt-4 p-3 bg-gray-50 rounded">
-            <p><strong>Acesso padrão:</strong></p>
-            <p>Usuário: admin</p>
-            <p>Senha: admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
