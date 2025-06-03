@@ -31,7 +31,24 @@ const AdminAuth = ({ onLogin }: AdminAuthProps) => {
   const getAdminUsers = (): AdminUser[] => {
     const saved = localStorage.getItem('adminUsers');
     if (saved) {
-      return JSON.parse(saved);
+      const users = JSON.parse(saved);
+      // Migrar usuários existentes sem companyId
+      const migratedUsers = users.map((user: AdminUser) => {
+        if (user.role === 'client' && !user.companyId) {
+          return {
+            ...user,
+            companyId: Math.random().toString(36).substring(2, 15)
+          };
+        }
+        return user;
+      });
+      
+      // Salvar usuários migrados se houve mudanças
+      if (JSON.stringify(users) !== JSON.stringify(migratedUsers)) {
+        localStorage.setItem('adminUsers', JSON.stringify(migratedUsers));
+      }
+      
+      return migratedUsers;
     }
     
     // Criar superadmin padrão

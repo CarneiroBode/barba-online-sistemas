@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, User, Phone, Settings } from "lucide-react";
@@ -35,6 +35,7 @@ export interface Appointment {
   time: string;
   status: 'confirmed' | 'cancelled';
   createdAt: string;
+  companyId?: string;
 }
 
 interface CompanyInfo {
@@ -46,6 +47,7 @@ interface CompanyInfo {
 
 const Index = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<'auth' | 'welcome' | 'service' | 'datetime' | 'confirmation' | 'myappointments'>('auth');
   const [clientPhone, setClientPhone] = useState<string>('');
@@ -57,6 +59,7 @@ const Index = () => {
   const [isNewClient, setIsNewClient] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [companyId, setCompanyId] = useState<string>('');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: 'MEUS AGENDAMENTOS',
     address: '',
@@ -68,26 +71,85 @@ const Index = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
+  // Extrair company_id da URL
+  const extractCompanyId = (): string => {
+    const path = location.pathname;
+    const pathSegments = path.split('/').filter(segment => segment);
+    return pathSegments[0] || '';
+  };
+
+  // Verificar se a empresa existe
+  const validateCompany = (companyId: string): boolean => {
+    const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+    return adminUsers.some((user: any) => user.companyId === companyId && user.role === 'client');
+  };
+
+  // Carregar dados específicos da empresa
+  const loadCompanyData = (companyId: string) => {
+    // Carregar informações da empresa
+    const savedCompanyInfo = localStorage.getItem(`${companyId}_companyInfo`);
+    if (savedCompanyInfo) {
+      setCompanyInfo(JSON.parse(savedCompanyInfo));
+    } else {
+      // Buscar nome da empresa nos dados do admin
+      const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+      const company = adminUsers.find((user: any) => user.companyId === companyId);
+      if (company) {
+        setCompanyInfo(prev => ({
+          ...prev,
+          name: company.companyName || 'MEUS AGENDAMENTOS'
+        }));
+      }
+    }
+
+    // Carregar serviços da empresa
+    const savedServices = localStorage.getItem(`${companyId}_services`);
+    if (savedServices) {
+      setServices(JSON.parse(savedServices));
+    } else {
+      // Serviços padrão apenas se não houver salvos
+      const defaultServices: Service[] = [
+        { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
+        { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
+      ];
+      setServices(defaultServices);
+    }
+
+    // Carregar agendamentos da empresa
+    const savedAppointments = localStorage.getItem(`${companyId}_appointments`);
+    if (savedAppointments) {
+      setAppointments(JSON.parse(savedAppointments));
+    }
+  };
+
   useEffect(() => {
     const initializeApp = async () => {
-      // Carregar informações da empresa
-      const savedCompanyInfo = localStorage.getItem('companyInfo');
-      if (savedCompanyInfo) {
-        setCompanyInfo(JSON.parse(savedCompanyInfo));
+      const extractedCompanyId = extractCompanyId();
+      
+      if (!extractedCompanyId) {
+        // URL sem company_id - mostrar erro
+        toast({
+          title: "Acesso inválido",
+          description: "Link inválido. Por favor, use o link fornecido pela empresa.",
+          variant: "destructive"
+        });
+        setStep('auth');
+        return;
       }
 
-      // Carregar serviços
-      const savedServices = localStorage.getItem('services');
-      if (savedServices) {
-        setServices(JSON.parse(savedServices));
-      } else {
-        // Serviços padrão apenas se não houver salvos
-        const defaultServices: Service[] = [
-          { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
-          { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
-        ];
-        setServices(defaultServices);
+      // Verificar se a empresa existe
+      if (!validateCompany(extractedCompanyId)) {
+        toast({
+          title: "Empresa não encontrada",
+          description: "A empresa não foi encontrada no sistema.",
+          variant: "destructive"
+        });
+        setStep('auth');
+        return;
       }
+
+      setCompanyId(extractedCompanyId);
+      loadCompanyData(extractedCompanyId);
 
       // Verificar parâmetros da URL
       const phone = searchParams.get('phone');
@@ -134,18 +196,13 @@ const Index = () => {
           setStep('auth');
         }
       } else {
+        // Apenas company_id - permitir cadastro de novo usuário
         setStep('auth');
-      }
-
-      // Carregar agendamentos do localStorage
-      const savedAppointments = localStorage.getItem('appointments');
-      if (savedAppointments) {
-        setAppointments(JSON.parse(savedAppointments));
       }
     };
 
     initializeApp();
-  }, [searchParams, toast]);
+  }, [searchParams, location.pathname, toast]);
 
   const handleNameSubmit = async () => {
     if (nameInput.trim() && clientPhone) {
@@ -188,7 +245,7 @@ const Index = () => {
   };
 
   const handleConfirmAppointment = async () => {
-    if (!selectedService || !selectedDate || !selectedTime || !isAuthenticated) return;
+    if (!selectedService || !selectedDate || !selectedTime || !isAuthenticated || !companyId) return;
 
     const newAppointment: Appointment = {
       id: Date.now().toString(),
@@ -199,14 +256,15 @@ const Index = () => {
       date: selectedDate,
       time: selectedTime,
       status: 'confirmed',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      companyId: companyId
     };
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage específico da empresa
       const updatedAppointments = [...appointments, newAppointment];
       setAppointments(updatedAppointments);
-      localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+      localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
 
       // Salvar no Supabase
       await saveAppointmentToSupabase(newAppointment, clientPhone, securityCode);
@@ -217,6 +275,7 @@ const Index = () => {
           type: 'appointment_confirmed',
           appointment: newAppointment,
           companyInfo: companyInfo,
+          companyId: companyId,
           secureLink: generateSecureLink(clientPhone, securityCode),
           timestamp: new Date().toISOString()
         };
@@ -244,7 +303,7 @@ const Index = () => {
       apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
     );
     setAppointments(updatedAppointments);
-    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+    localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
     
     toast({
       title: "Agendamento cancelado",

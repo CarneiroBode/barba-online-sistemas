@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,8 +58,8 @@ const Admin = () => {
   }, [currentUser]);
 
   const loadUserData = () => {
-    // Carregar dados específicos do usuário ou globais se for superadmin
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    // Determinar o prefixo dos dados baseado no tipo de usuário
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     
     const savedAppointments = localStorage.getItem(`${dataPrefix}appointments`);
     if (savedAppointments) {
@@ -81,11 +82,17 @@ const Admin = () => {
     const savedCompanyInfo = localStorage.getItem(`${dataPrefix}companyInfo`);
     if (savedCompanyInfo) {
       setCompanyInfo(JSON.parse(savedCompanyInfo));
+    } else if (currentUser?.role === 'client') {
+      // Para clientes, usar o nome da empresa do perfil como padrão
+      setCompanyInfo(prev => ({
+        ...prev,
+        name: currentUser.companyName || ''
+      }));
     }
   };
 
   const saveCompanyInfo = () => {
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     localStorage.setItem(`${dataPrefix}companyInfo`, JSON.stringify(companyInfo));
     toast({
       title: "Informações salvas!",
@@ -121,7 +128,7 @@ const Admin = () => {
 
     const updatedServices = [...services, service];
     setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     setNewService({ name: '', price: 0, duration: 30 });
     
@@ -138,7 +145,7 @@ const Admin = () => {
       service.id === editingService.id ? editingService : service
     );
     setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     setEditingService(null);
     
@@ -151,7 +158,7 @@ const Admin = () => {
   const deleteService = (serviceId: string) => {
     const updatedServices = services.filter(service => service.id !== serviceId);
     setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     
     toast({
@@ -195,7 +202,7 @@ const Admin = () => {
       apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
     );
     setAppointments(updatedAppointments);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
     localStorage.setItem(`${dataPrefix}appointments`, JSON.stringify(updatedAppointments));
     setCancelDialog({ open: false, appointmentId: null });
     

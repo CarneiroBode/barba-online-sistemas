@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, EyeOff, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -14,6 +14,7 @@ interface AdminUser {
   password: string;
   role: 'superadmin' | 'client';
   companyName?: string;
+  companyId?: string;
   createdAt: string;
 }
 
@@ -32,6 +33,15 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  const generateCompanyId = (): string => {
+    return Math.random().toString(36).substring(2, 15);
+  };
+
+  const generateClientLink = (companyId: string): string => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/${companyId}`;
+  };
 
   const loadUsers = () => {
     const saved = localStorage.getItem('adminUsers');
@@ -71,12 +81,14 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       return;
     }
 
+    const companyId = generateCompanyId();
     const user: AdminUser = {
       id: Date.now().toString(),
       username: newUser.username,
       password: newUser.password,
       role: 'client',
       companyName: newUser.companyName,
+      companyId: companyId,
       createdAt: new Date().toISOString()
     };
 
@@ -126,6 +138,14 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     }));
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copiado!",
+      description: "Link copiado para a área de transferência.",
+    });
+  };
+
   const clientUsers = users.filter(u => u.role === 'client');
 
   if (currentUser.role !== 'superadmin') {
@@ -143,6 +163,27 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
             <div>
               <Label>Usuário</Label>
               <p>{currentUser.username}</p>
+            </div>
+            <div>
+              <Label>Company ID</Label>
+              <p className="font-mono text-sm">{currentUser.companyId}</p>
+            </div>
+            <div>
+              <Label>Link do Cliente</Label>
+              <div className="flex items-center gap-2">
+                <p className="text-sm bg-gray-50 p-2 rounded flex-1 font-mono">
+                  {currentUser.companyId ? generateClientLink(currentUser.companyId) : 'N/A'}
+                </p>
+                {currentUser.companyId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(generateClientLink(currentUser.companyId!))}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <Label>Tipo de Conta</Label>
@@ -212,7 +253,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
           ) : (
             <div className="space-y-4">
               {clientUsers.map((user) => (
-                <div key={user.id} className="flex justify-between items-center p-4 border rounded-lg">
+                <div key={user.id} className="flex justify-between items-start p-4 border rounded-lg">
                   {editingUser?.id === user.id ? (
                     <div className="flex-1 grid grid-cols-3 gap-4">
                       <Input
@@ -250,12 +291,34 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
                           {showPasswords[user.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <div className="text-sm text-gray-600 mt-2">
+                        <span>Company ID: </span>
+                        <span className="font-mono">{user.companyId}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        <span>Link do Cliente: </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs bg-gray-50 p-1 rounded font-mono flex-1">
+                            {user.companyId ? generateClientLink(user.companyId) : 'N/A'}
+                          </span>
+                          {user.companyId && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(generateClientLink(user.companyId!))}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
                         Criado em: {new Date(user.createdAt).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   )}
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 ml-4">
                     {editingUser?.id === user.id ? (
                       <>
                         <Button onClick={updateUser} size="sm">

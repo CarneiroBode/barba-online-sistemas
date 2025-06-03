@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://jhdtarrgtlyxwqbexhcg.supabase.co';
@@ -23,6 +22,7 @@ export interface SecureAppointment {
   date: string;
   time: string;
   status: 'confirmed' | 'cancelled';
+  companyId?: string;
   createdAt?: string;
 }
 
@@ -117,7 +117,8 @@ export const saveAppointmentToSupabase = async (appointment: any, phone: string,
         professional: appointment.professional,
         date: appointment.date,
         time: appointment.time,
-        status: appointment.status
+        status: appointment.status,
+        company_id: appointment.companyId
       });
 
     if (error) {
@@ -131,7 +132,10 @@ export const saveAppointmentToSupabase = async (appointment: any, phone: string,
 };
 
 // Gerar link seguro para agendamento
-export const generateSecureLink = (phone: string, securityCode: string): string => {
+export const generateSecureLink = (phone: string, securityCode: string, companyId?: string): string => {
   const baseUrl = window.location.origin;
+  if (companyId) {
+    return `${baseUrl}/${companyId}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
+  }
   return `${baseUrl}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
 };
