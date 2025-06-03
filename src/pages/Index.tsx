@@ -182,12 +182,8 @@ const Index = () => {
         // Apenas telefone fornecido - verificar se usuário existe
         const user = await getUserByPhone(phone);
         if (user) {
-          toast({
-            title: "Link incompleto",
-            description: "Por favor, use o link completo enviado via WhatsApp.",
-            variant: "destructive"
-          });
-          setStep('auth');
+          // Link incompleto - não autenticar
+          setIsAuthenticated(false);
         } else {
           // Novo usuário
           setClientPhone(phone);
