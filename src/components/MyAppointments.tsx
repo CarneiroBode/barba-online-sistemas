@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,10 +31,10 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
     const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     const month = monthNames[date.getMonth()];
     const year = date.getFullYear();
-    
+
     const dayNames = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     const dayName = dayNames[date.getDay()];
-    
+
     return `${dayName}, ${day} ${month} ${year}`;
   };
 
@@ -83,7 +82,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
           <div className="text-center py-12">            
             <h2 className="text-xl font-semibold mb-4">Você não possui agendamentos em aberto.</h2>
             <p className="text-gray-400 mb-8">Realize um agendamento e ele aparecerá aqui!</p>
-            
+
             <Button 
               onClick={onNewAppointment}
               className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
@@ -119,7 +118,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                         )}
                       </div>
                     </div>
-                    
+
                     {canCancel && (
                       <div className="mt-4 p-3 bg-gray-600 rounded-lg">
                         <p className="text-sm text-gray-300">
@@ -127,7 +126,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                         </p>
                       </div>
                     )}
-                    
+
                     {!canCancel && (
                       <div className="mt-4 p-3 bg-red-900/20 rounded-lg">
                         <p className="text-sm text-red-300">
@@ -139,7 +138,7 @@ const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppoin
                 </Card>
               );
             })}
-            
+
             <Button 
               onClick={onNewAppointment}
               className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg mt-6"

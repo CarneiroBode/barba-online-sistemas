@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   validateUserAccess, 
   upsertUser, 
-  getUserByPhone, 
+  getUserByWhatsapp, 
   saveAppointmentToSupabase,
   generateSecureLink 
 } from "@/utils/supabase";
@@ -27,7 +27,7 @@ export interface Service {
 export interface Appointment {
   id: string;
   clientName: string;
-  clientPhone: string;
+  clientWhatsapp: string;
   service: Service;
   professional: string;
   date: string;
@@ -49,7 +49,7 @@ const Index = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<'auth' | 'welcome' | 'service' | 'datetime' | 'confirmation' | 'myappointments'>('auth');
-  const [clientPhone, setClientPhone] = useState<string>('');
+  const [clientWhatsapp, setClientWhatsapp] = useState<string>('');
   const [clientName, setClientName] = useState<string>('');
   const [securityCode, setSecurityCode] = useState<string>('');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -142,16 +142,16 @@ const Index = () => {
       loadCompanyData(extractedCompanyId);
 
       // Verificar parâmetros da URL
-      const phone = searchParams.get('phone');
+      const whatsapp = searchParams.get('whatsapp');
       const code = searchParams.get('code');
 
-      if (phone && code) {
+      if (whatsapp && code) {
         // Validar acesso com código de segurança
-        const isValid = await validateUserAccess(phone, code);
+        const isValid = await validateUserAccess(whatsapp, code);
         if (isValid) {
-          const user = await getUserByPhone(phone);
+          const user = await getUserByWhatsapp(whatsapp);
           if (user) {
-            setClientPhone(phone);
+            setClientWhatsapp(whatsapp);
             setClientName(user.name);
             setSecurityCode(code);
             setIsAuthenticated(true);
@@ -165,15 +165,15 @@ const Index = () => {
           // Link inválido ou expirado - não autenticar
           setIsAuthenticated(false);
         }
-      } else if (phone) {
-        // Apenas telefone fornecido - verificar se usuário existe
-        const user = await getUserByPhone(phone);
+      } else if (whatsapp) {
+        // Apenas whatsapp fornecido - verificar se usuário existe
+        const user = await getUserByWhatsapp(whatsapp);
         if (user) {
           // Link incompleto - não autenticar
           setIsAuthenticated(false);
         } else {
           // Novo usuário
-          setClientPhone(phone);
+          setClientWhatsapp(whatsapp);
           setIsNewClient(true);
           setStep('auth');
         }
@@ -187,9 +187,9 @@ const Index = () => {
   }, [searchParams, location.pathname, toast]);
 
   const handleNameSubmit = async () => {
-    if (nameInput.trim() && clientPhone) {
+    if (nameInput.trim() && clientWhatsapp) {
       try {
-        const newSecurityCode = await upsertUser(clientPhone, nameInput);
+        const newSecurityCode = await upsertUser(clientWhatsapp, nameInput);
         setClientName(nameInput);
         setSecurityCode(newSecurityCode);
         setIsAuthenticated(true);
@@ -197,7 +197,7 @@ const Index = () => {
         setStep('welcome');
 
         // Gerar link seguro para o usuário
-        const secureLink = generateSecureLink(clientPhone, newSecurityCode);
+        const secureLink = generateSecureLink(clientWhatsapp, newSecurityCode);
 
         toast({
           title: `Bem-vindo, ${nameInput}!`,
@@ -232,7 +232,7 @@ const Index = () => {
     const newAppointment: Appointment = {
       id: Date.now().toString(),
       clientName,
-      clientPhone,
+      clientWhatsapp,
       service: selectedService,
       professional: companyInfo.professionalName || 'Profissional',
       date: selectedDate,
@@ -249,7 +249,7 @@ const Index = () => {
       localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
 
       // Salvar no Supabase
-      await saveAppointmentToSupabase(newAppointment, clientPhone, securityCode);
+      await saveAppointmentToSupabase(newAppointment, clientWhatsapp, securityCode);
 
       // Enviar webhook para n8n (quando integrado)
       try {
@@ -258,7 +258,7 @@ const Index = () => {
           appointment: newAppointment,
           companyInfo: companyInfo,
           companyId: companyId,
-          secureLink: generateSecureLink(clientPhone, securityCode),
+          secureLink: generateSecureLink(clientWhatsapp, securityCode),
           timestamp: new Date().toISOString()
         };
 
@@ -414,7 +414,7 @@ const Index = () => {
 
       {step === 'myappointments' && (
         <MyAppointments
-          appointments={appointments.filter(apt => apt.clientPhone === clientPhone)}
+          appointments={appointments.filter(apt => apt.clientWhatsapp === clientWhatsapp)}
           onBack={() => setStep('welcome')}
           onCancelAppointment={handleCancelAppointment}
           onNewAppointment={() => setStep('service')}

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS company_users (
 -- Tabela para autenticação de clientes finais
 CREATE TABLE IF NOT EXISTS user_auth (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  phone VARCHAR(20) UNIQUE NOT NULL,
+  whatsapp VARCHAR(20) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
   securitycode VARCHAR(50) NOT NULL,
   company_id VARCHAR(50) REFERENCES companies(company_id) ON DELETE CASCADE,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS services (
 CREATE TABLE IF NOT EXISTS appointments (
   id VARCHAR(50) PRIMARY KEY,
   company_id VARCHAR(50) REFERENCES companies(company_id) ON DELETE CASCADE,
-  phone VARCHAR(20) NOT NULL,
+  whatsapp VARCHAR(20) NOT NULL,
   name VARCHAR(255) NOT NULL,
   securitycode VARCHAR(50) NOT NULL,
   service JSONB NOT NULL, -- armazena dados do serviço
@@ -89,9 +89,9 @@ CREATE TABLE IF NOT EXISTS business_hours (
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_appointments_company_id ON appointments(company_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);
-CREATE INDEX IF NOT EXISTS idx_appointments_phone ON appointments(phone);
+CREATE INDEX IF NOT EXISTS idx_appointments_whatsapp ON appointments(whatsapp);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
-CREATE INDEX IF NOT EXISTS idx_user_auth_phone ON user_auth(phone);
+CREATE INDEX IF NOT EXISTS idx_user_auth_whatsapp ON user_auth(whatsapp);
 CREATE INDEX IF NOT EXISTS idx_user_auth_company_id ON user_auth(company_id);
 CREATE INDEX IF NOT EXISTS idx_services_company_id ON services(company_id);
 CREATE INDEX IF NOT EXISTS idx_business_hours_company_id ON business_hours(company_id);
