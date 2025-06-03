@@ -81,7 +81,7 @@ const Index = () => {
   // Verificar se a empresa existe
   const validateCompany = (companyId: string): boolean => {
     const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    return adminUsers.some((user: any) => user.companyId === companyId && user.role === 'client');
+    return adminUsers.some((user: any) => user.companyId === companyId);
   };
 
   // Carregar dados específicos da empresa
