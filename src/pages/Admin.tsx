@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, User, Settings, Building, Plus, Edit, Trash2 } from "lucide-react";
+import { Calendar, Clock, User, Settings, Building, Plus, Edit, Trash2, LogOut, Users } from "lucide-react";
 import { Appointment, Service } from "@/pages/Index";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import AdminAuth from "@/components/AdminAuth";
+import UserManagement from "@/components/UserManagement";
 
 interface CompanyInfo {
   name: string;
@@ -15,8 +17,18 @@ interface CompanyInfo {
   professionalName: string;
 }
 
+interface AdminUser {
+  id: string;
+  username: string;
+  password: string;
+  role: 'superadmin' | 'client';
+  companyName?: string;
+  createdAt: string;
+}
+
 const Admin = () => {
   const { toast } = useToast();
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
@@ -25,7 +37,7 @@ const Admin = () => {
     phone: '',
     professionalName: ''
   });
-  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'appointments' | 'services' | 'company' | 'users'>('dashboard');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   
   // Estados para edição de serviços
@@ -39,13 +51,21 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    // Carregar dados do localStorage
-    const savedAppointments = localStorage.getItem('appointments');
+    if (currentUser) {
+      loadUserData();
+    }
+  }, [currentUser]);
+
+  const loadUserData = () => {
+    // Carregar dados específicos do usuário ou globais se for superadmin
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    
+    const savedAppointments = localStorage.getItem(`${dataPrefix}appointments`);
     if (savedAppointments) {
       setAppointments(JSON.parse(savedAppointments));
     }
 
-    const savedServices = localStorage.getItem('services');
+    const savedServices = localStorage.getItem(`${dataPrefix}services`);
     if (savedServices) {
       setServices(JSON.parse(savedServices));
     } else {
@@ -55,20 +75,30 @@ const Admin = () => {
         { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
       ];
       setServices(defaultServices);
-      localStorage.setItem('services', JSON.stringify(defaultServices));
+      localStorage.setItem(`${dataPrefix}services`, JSON.stringify(defaultServices));
     }
 
-    const savedCompanyInfo = localStorage.getItem('companyInfo');
+    const savedCompanyInfo = localStorage.getItem(`${dataPrefix}companyInfo`);
     if (savedCompanyInfo) {
       setCompanyInfo(JSON.parse(savedCompanyInfo));
     }
-  }, []);
+  };
 
   const saveCompanyInfo = () => {
-    localStorage.setItem('companyInfo', JSON.stringify(companyInfo));
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    localStorage.setItem(`${dataPrefix}companyInfo`, JSON.stringify(companyInfo));
     toast({
       title: "Informações salvas!",
       description: "As informações da empresa foram atualizadas com sucesso.",
+    });
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setView('dashboard');
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado com sucesso.",
     });
   };
 
@@ -91,7 +121,8 @@ const Admin = () => {
 
     const updatedServices = [...services, service];
     setServices(updatedServices);
-    localStorage.setItem('services', JSON.stringify(updatedServices));
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     setNewService({ name: '', price: 0, duration: 30 });
     
     toast({
@@ -107,7 +138,8 @@ const Admin = () => {
       service.id === editingService.id ? editingService : service
     );
     setServices(updatedServices);
-    localStorage.setItem('services', JSON.stringify(updatedServices));
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     setEditingService(null);
     
     toast({
@@ -119,7 +151,8 @@ const Admin = () => {
   const deleteService = (serviceId: string) => {
     const updatedServices = services.filter(service => service.id !== serviceId);
     setServices(updatedServices);
-    localStorage.setItem('services', JSON.stringify(updatedServices));
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
     
     toast({
       title: "Serviço removido!",
@@ -162,7 +195,8 @@ const Admin = () => {
       apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
     );
     setAppointments(updatedAppointments);
-    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.id}_`;
+    localStorage.setItem(`${dataPrefix}appointments`, JSON.stringify(updatedAppointments));
     setCancelDialog({ open: false, appointmentId: null });
     
     toast({
@@ -170,6 +204,11 @@ const Admin = () => {
       description: "O agendamento foi cancelado com sucesso.",
     });
   };
+
+  // Se não estiver logado, mostrar tela de login
+  if (!currentUser) {
+    return <AdminAuth onLogin={setCurrentUser} />;
+  }
 
   const stats = getTodayStats();
   const dayAppointments = getAppointmentsByDate(selectedDate);
@@ -180,8 +219,20 @@ const Admin = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
-            {companyInfo.name || 'Painel Administrativo'}
+            {currentUser.role === 'superadmin' ? 'Painel Super Admin' : companyInfo.name || 'Painel Administrativo'}
           </h1>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              Olá, {currentUser.role === 'superadmin' ? 'Super Admin' : currentUser.companyName}
+            </span>
+            <Button onClick={handleLogout} variant="outline" size="sm">
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center mb-6">
           <div className="flex space-x-2">
             <Button 
               variant={view === 'dashboard' ? 'default' : 'outline'}
@@ -211,8 +262,21 @@ const Admin = () => {
               <Building className="w-4 h-4 mr-2" />
               Empresa
             </Button>
+            {currentUser.role === 'superadmin' && (
+              <Button 
+                variant={view === 'users' ? 'default' : 'outline'}
+                onClick={() => setView('users')}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Clientes
+              </Button>
+            )}
           </div>
         </div>
+
+        {view === 'users' && currentUser.role === 'superadmin' && (
+          <UserManagement currentUser={currentUser} />
+        )}
 
         {view === 'company' && (
           <Card>
@@ -265,6 +329,7 @@ const Admin = () => {
 
         {view === 'dashboard' && (
           <>
+            {/* ... keep existing code (dashboard stats and today's appointments) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
