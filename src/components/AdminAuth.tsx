@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,6 +30,10 @@ const AdminAuth = ({ onLogin }: AdminAuthProps) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const { toast } = useToast();
 
   // Carregar usuários do localStorage ou criar superadmin padrão
@@ -105,6 +110,54 @@ const AdminAuth = ({ onLogin }: AdminAuthProps) => {
     }
   };
 
+  const handleChangePassword = () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const users = getAdminUsers();
+    const superAdmin = users.find(u => u.role === 'superadmin');
+    
+    if (!superAdmin || superAdmin.password !== currentPassword) {
+      toast({
+        title: "Erro",
+        description: "Senha atual incorreta.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const updatedUsers = users.map(user => 
+      user.role === 'superadmin' ? { ...user, password: newPassword } : user
+    );
+    
+    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
+    
+    toast({
+      title: "Senha alterada!",
+      description: "Senha do Super Admin alterada com sucesso.",
+    });
+
+    setShowPasswordDialog(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -158,8 +211,64 @@ const AdminAuth = ({ onLogin }: AdminAuthProps) => {
           >
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
+
+          <Button 
+            onClick={() => setShowPasswordDialog(true)} 
+            variant="outline"
+            className="w-full mt-2"
+          >
+            Alterar Senha Super Admin
+          </Button>
         </CardContent>
       </Card>
+
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Senha do Super Admin</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="current-password">Senha Atual</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Digite a senha atual"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-password">Nova Senha</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Digite a nova senha"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirme a nova senha"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleChangePassword}>
+              Alterar Senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

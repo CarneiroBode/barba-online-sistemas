@@ -355,13 +355,13 @@ const Admin = () => {
               <CardTitle>Informações da Empresa</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Company ID em destaque */}
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <Label className="text-blue-800 font-semibold">Company ID (não pode ser alterado)</Label>
-                <div className="bg-white p-3 rounded border font-mono text-blue-900 font-bold text-lg mt-2">
+              {/* Company ID em destaque suave */}
+              <div>
+                <Label htmlFor="company-id" className="font-bold">Company ID * (não pode ser alterado)</Label>
+                <div className="bg-gray-50 border border-gray-300 p-3 rounded font-mono font-bold text-gray-800 mt-2">
                   {currentUser.companyId}
                 </div>
-                <p className="text-sm text-blue-600 mt-1">
+                <p className="text-sm text-gray-600 mt-1">
                   Este é o identificador único da sua empresa no sistema
                 </p>
               </div>

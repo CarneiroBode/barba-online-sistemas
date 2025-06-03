@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Building } from "lucide-react";
+import { Plus, Edit, Trash2, Building, Eye, EyeOff } from "lucide-react";
 
 interface AdminUser {
   id: string;
@@ -30,6 +30,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
@@ -62,6 +63,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       socialMedia: ''
     });
     setEditingUser(null);
+    setShowPassword(false);
   };
 
   const generateCompanyId = (companyName: string): string => {
@@ -216,7 +218,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
             <CardContent className="space-y-2">
               <div className="text-sm">
                 <strong>Company ID:</strong>
-                <div className="bg-blue-50 p-2 rounded border font-mono text-blue-800 mt-1">
+                <div className="bg-gray-50 border border-gray-300 p-2 rounded font-mono font-bold text-gray-800 mt-1">
                   {user.companyId}
                 </div>
               </div>
@@ -309,16 +311,27 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
 
               <div>
                 <Label htmlFor="password">Senha *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={editingUser ? editingUser.password : newUser.password}
-                  onChange={(e) => editingUser 
-                    ? setEditingUser({...editingUser, password: e.target.value})
-                    : setNewUser({...newUser, password: e.target.value})
-                  }
-                  placeholder="senha123"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={editingUser ? editingUser.password : newUser.password}
+                    onChange={(e) => editingUser 
+                      ? setEditingUser({...editingUser, password: e.target.value})
+                      : setNewUser({...newUser, password: e.target.value})
+                    }
+                    placeholder="senha123"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -337,8 +350,8 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
 
             {editingUser && editingUser.companyId && (
               <div>
-                <Label>Company ID (não pode ser alterado)</Label>
-                <div className="bg-gray-50 p-3 rounded border font-mono text-gray-600 mt-1">
+                <Label className="font-bold">Company ID * (não pode ser alterado)</Label>
+                <div className="bg-gray-50 border border-gray-300 p-3 rounded font-mono font-bold text-gray-800 mt-2">
                   {editingUser.companyId}
                 </div>
               </div>
