@@ -13,8 +13,7 @@ import {
   upsertUser, 
   getUserByWhatsapp, 
   saveAppointmentToSupabase,
-  generateSecureLink,
-  insertTestData
+  generateSecureLink 
 } from "@/utils/supabase";
 
 export interface Service {
@@ -66,33 +65,6 @@ const Index = () => {
     phone: '',
     professionalName: 'Profissional'
   });
-
-  // Função para inserir dados de teste
-  const handleInsertTestData = async () => {
-    try {
-      await insertTestData();
-      toast({
-        title: "Sucesso",
-        description: "Dados de teste inseridos com sucesso!"
-      });
-      
-      // Gerar URL de teste
-      const testUrl = generateSecureLink('27981172769', 'MSX666', 'asdasd_016502');
-      console.log('URL de teste gerada:', testUrl);
-      
-      toast({
-        title: "URL de Teste",
-        description: `URL copiada para o console: ${testUrl}`
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao inserir dados de teste",
-        variant: "destructive"
-      });
-      console.error('Erro:', error);
-    }
-  };
 
   // Dados dinâmicos - carregados do localStorage
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -150,14 +122,6 @@ const Index = () => {
   };
 
   useEffect(() => {
-    // Expor função para teste no console
-    (window as any).insertTestData = handleInsertTestData;
-    (window as any).generateTestUrl = () => {
-      const testUrl = generateSecureLink('27981172769', 'MSX666', 'asdasd_016502');
-      console.log('URL de teste:', testUrl);
-      return testUrl;
-    };
-
     const initializeApp = async () => {
       const extractedCompanyId = extractCompanyId();
 
