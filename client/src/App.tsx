@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from 'react'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import './App.css';
 
 interface UserInfo {
   company: string;
@@ -107,4 +107,4 @@ function App() {
   );
 }
 
-export default Appp
+export default App;
