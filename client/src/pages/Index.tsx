@@ -206,9 +206,10 @@ const Index = () => {
 
         console.log('Link seguro gerado:', secureLink);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Erro ao registrar usuário. Tente novamente.";
         toast({
           title: "Erro",
-          description: "Erro ao registrar usuário. Tente novamente.",
+          description: errorMessage,
           variant: "destructive"
         });
       }

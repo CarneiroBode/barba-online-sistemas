@@ -59,33 +59,37 @@ export const validateUserAccess = async (whatsapp: string, securityCode: string,
   }
 };
 
+// Verificar se empresa existe no Supabase
+export const checkCompanyExists = async (companyId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', companyId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      console.error('Erro ao verificar empresa:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Erro na verificação de empresa:', error);
+    return false;
+  }
+};
+
 // Criar ou atualizar usuário
 export const upsertUser = async (whatsapp: string, name: string, companyId?: string): Promise<string> => {
   const securityCode = generateSecurityCode();
   
   try {
-    // Se companyId é fornecido, verificar se a empresa existe
+    // Se companyId é fornecido, verificar se a empresa existe no Supabase
     if (companyId) {
-      const { data: companyExists, error: companyError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('id', companyId)
-        .single();
-
-      if (companyError || !companyExists) {
-        // Se a empresa não existe, criar ela primeiro
-        const { error: createCompanyError } = await supabase
-          .from('companies')
-          .insert({
-            id: companyId,
-            name: companyId,
-            created_at: new Date().toISOString()
-          });
-
-        if (createCompanyError) {
-          console.error('Erro ao criar empresa:', createCompanyError);
-          throw createCompanyError;
-        }
+      const companyExists = await checkCompanyExists(companyId);
+      if (!companyExists) {
+        throw new Error(`Empresa ${companyId} não encontrada. Verifique se a empresa está cadastrada no sistema.`);
       }
     }
 
@@ -95,7 +99,7 @@ export const upsertUser = async (whatsapp: string, name: string, companyId?: str
       securitycode: securityCode
     };
 
-    // Adicionar company_id se fornecido
+    // Adicionar company_id se fornecido e a empresa existir
     if (companyId) {
       userData.company_id = companyId;
     }
