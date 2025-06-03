@@ -147,9 +147,9 @@ const Index = () => {
 
       if (whatsapp && code) {
         // Validar acesso com código de segurança
-        const isValid = await validateUserAccess(whatsapp, code);
+        const isValid = await validateUserAccess(whatsapp, code, extractedCompanyId);
         if (isValid) {
-          const user = await getUserByWhatsapp(whatsapp);
+          const user = await getUserByWhatsapp(whatsapp, extractedCompanyId);
           if (user) {
             setClientWhatsapp(whatsapp);
             setClientName(user.name);
@@ -167,7 +167,7 @@ const Index = () => {
         }
       } else if (whatsapp) {
         // Apenas whatsapp fornecido - verificar se usuário existe
-        const user = await getUserByWhatsapp(whatsapp);
+        const user = await getUserByWhatsapp(whatsapp, extractedCompanyId);
         if (user) {
           // Link incompleto - não autenticar
           setIsAuthenticated(false);
@@ -189,7 +189,7 @@ const Index = () => {
   const handleNameSubmit = async () => {
     if (nameInput.trim() && clientWhatsapp) {
       try {
-        const newSecurityCode = await upsertUser(clientWhatsapp, nameInput);
+        const newSecurityCode = await upsertUser(clientWhatsapp, nameInput, companyId);
         setClientName(nameInput);
         setSecurityCode(newSecurityCode);
         setIsAuthenticated(true);
@@ -197,7 +197,7 @@ const Index = () => {
         setStep('welcome');
 
         // Gerar link seguro para o usuário
-        const secureLink = generateSecureLink(clientWhatsapp, newSecurityCode);
+        const secureLink = generateSecureLink(clientWhatsapp, newSecurityCode, companyId);
 
         toast({
           title: `Bem-vindo, ${nameInput}!`,

@@ -32,14 +32,20 @@ export const generateSecurityCode = (): string => {
 };
 
 // Validar acesso do usuário
-export const validateUserAccess = async (whatsapp: string, securityCode: string): Promise<boolean> => {
+export const validateUserAccess = async (whatsapp: string, securityCode: string, companyId?: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('user_auth')
       .select('*')
       .eq('whatsapp', whatsapp)
-      .eq('securitycode', securityCode)
-      .single();
+      .eq('securitycode', securityCode);
+
+    // Se companyId é fornecido, incluir na validação
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
       console.error('Erro ao validar acesso:', error);
@@ -54,17 +60,49 @@ export const validateUserAccess = async (whatsapp: string, securityCode: string)
 };
 
 // Criar ou atualizar usuário
-export const upsertUser = async (whatsapp: string, name: string): Promise<string> => {
+export const upsertUser = async (whatsapp: string, name: string, companyId?: string): Promise<string> => {
   const securityCode = generateSecurityCode();
   
   try {
+    // Se companyId é fornecido, verificar se a empresa existe
+    if (companyId) {
+      const { data: companyExists, error: companyError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('id', companyId)
+        .single();
+
+      if (companyError || !companyExists) {
+        // Se a empresa não existe, criar ela primeiro
+        const { error: createCompanyError } = await supabase
+          .from('companies')
+          .insert({
+            id: companyId,
+            name: companyId,
+            created_at: new Date().toISOString()
+          });
+
+        if (createCompanyError) {
+          console.error('Erro ao criar empresa:', createCompanyError);
+          throw createCompanyError;
+        }
+      }
+    }
+
+    const userData: any = {
+      whatsapp,
+      name,
+      securitycode: securityCode
+    };
+
+    // Adicionar company_id se fornecido
+    if (companyId) {
+      userData.company_id = companyId;
+    }
+
     const { data, error } = await supabase
       .from('user_auth')
-      .upsert({
-        whatsapp,
-        name,
-        securitycode: securityCode
-      }, {
+      .upsert(userData, {
         onConflict: 'whatsapp'
       })
       .select()
@@ -83,13 +121,19 @@ export const upsertUser = async (whatsapp: string, name: string): Promise<string
 };
 
 // Buscar usuário por whatsapp
-export const getUserByWhatsapp = async (whatsapp: string): Promise<UserAuth | null> => {
+export const getUserByWhatsapp = async (whatsapp: string, companyId?: string): Promise<UserAuth | null> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('user_auth')
       .select('*')
-      .eq('whatsapp', whatsapp)
-      .single();
+      .eq('whatsapp', whatsapp);
+
+    // Se companyId é fornecido, incluir na busca
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+
+    const { data, error } = await query.single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found
       console.error('Erro ao buscar usuário:', error);
