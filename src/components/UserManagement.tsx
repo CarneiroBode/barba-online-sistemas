@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +82,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     }
 
     const allUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    
+
     if (allUsers.find((u: AdminUser) => u.username === newUser.username)) {
       toast({
         title: "Erro",
@@ -111,7 +110,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     const updatedUsers = [...allUsers, user];
     saveUsers(updatedUsers);
     setNewUser({ username: '', password: '', companyName: '', address: '', cpfCnpj: '', whatsapp: '', socialMedia: '' });
-    
+
     toast({
       title: "Cliente criado!",
       description: `Cliente ${newUser.companyName} foi criado com sucesso.`,
@@ -125,10 +124,10 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     const updatedUsers = allUsers.map((u: AdminUser) => 
       u.id === editingUser.id ? editingUser : u
     );
-    
+
     saveUsers(updatedUsers);
     setEditingUser(null);
-    
+
     toast({
       title: "Cliente atualizado!",
       description: "Informações atualizadas com sucesso.",
@@ -140,7 +139,7 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     const updatedUsers = allUsers.filter((u: AdminUser) => u.id !== userId);
     saveUsers(updatedUsers);
     setDeleteDialog({ open: false, userId: null });
-    
+
     toast({
       title: "Cliente removido!",
       description: "Cliente foi removido com sucesso.",
@@ -168,7 +167,10 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Adicionar Novo Cliente</CardTitle>
+          <CardTitle>Cadastrar Nova Empresa</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Cadastre uma nova empresa que poderá gerenciar seus agendamentos
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -192,14 +194,18 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="new-company">Nome da Empresa</Label>
+              <Label htmlFor="company-name">Nome da Empresa</Label>
               <Input
-                id="new-company"
+                id="company-name"
                 value={newUser.companyName}
                 onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
                 placeholder="Ex: Salão Beleza & Arte"
+                required
               />
-            </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Esta empresa poderá gerenciar agendamentos de seus clientes
+                </p>
+              </div>
             <div>
               <Label htmlFor="new-address">Endereço</Label>
               <Input
@@ -246,7 +252,10 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Clientes Cadastrados ({clientUsers.length})</CardTitle>
+          <CardTitle>Gerenciar Empresas do Sistema</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Empresas cadastradas que podem gerenciar agendamentos de seus clientes
+          </p>
         </CardHeader>
         <CardContent>
           {clientUsers.length === 0 ? (
@@ -370,25 +379,8 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
                           </Button>
                         </div>
                       </div>
+
                       
-                      <div className="bg-gray-50 p-3 rounded">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">Link da Empresa:</p>
-                            <p className="text-sm font-mono text-blue-600">{generateClientLink(user.companyId!)}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Company ID: {user.companyId}
-                            </p>
-                          </div>
-                          <Button
-                            onClick={() => copyToClipboard(generateClientLink(user.companyId!))}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   )}
                 </div>

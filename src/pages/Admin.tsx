@@ -236,7 +236,7 @@ const Admin = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
-            {currentUser.role === 'superadmin' ? 'Painel Super Admin - Gerenciamento de Clientes' : companyInfo.name || 'Painel Administrativo'}
+            {currentUser.role === 'superadmin' ? 'Painel Super Admin - Gerenciamento de Empresas' : companyInfo.name || 'Painel Administrativo'}
           </h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
@@ -257,7 +257,7 @@ const Admin = () => {
                 onClick={() => setView('users')}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Gerenciar Clientes
+                Gerenciar Empresas
               </Button>
             ) : (
               <>
