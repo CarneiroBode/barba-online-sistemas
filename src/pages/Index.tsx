@@ -126,24 +126,15 @@ const Index = () => {
       const extractedCompanyId = extractCompanyId();
 
       if (!extractedCompanyId) {
-        // URL sem company_id - mostrar erro
-        toast({
-          title: "Acesso inválido",
-          description: "Link inválido. Por favor, use o link fornecido pela empresa.",
-          variant: "destructive"
-        });
-        setStep('auth');
+        // URL sem company_id - não autenticar
+        setIsAuthenticated(false);
         return;
       }
 
       // Verificar se a empresa existe
       if (!validateCompany(extractedCompanyId)) {
-        toast({
-          title: "Empresa não encontrada",
-          description: "A empresa não foi encontrada no sistema.",
-          variant: "destructive"
-        });
-        setStep('auth');
+        // Empresa não encontrada - não autenticar
+        setIsAuthenticated(false);
         return;
       }
 
@@ -171,12 +162,8 @@ const Index = () => {
             });
           }
         } else {
-          toast({
-            title: "Acesso negado",
-            description: "Link inválido ou expirado.",
-            variant: "destructive"
-          });
-          setStep('auth');
+          // Link inválido ou expirado - não autenticar
+          setIsAuthenticated(false);
         }
       } else if (phone) {
         // Apenas telefone fornecido - verificar se usuário existe
