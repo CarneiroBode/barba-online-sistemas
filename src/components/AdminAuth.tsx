@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ interface AdminUser {
   password: string;
   role: 'superadmin' | 'client';
   companyName?: string;
+  companyId?: string;
   createdAt: string;
 }
 
