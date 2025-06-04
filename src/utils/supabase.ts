@@ -6,7 +6,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface UserAuth {
-  whatsapp: string;
+  phone: string;
   name: string;
   securitycode: string; // Minúsculo para compatibilidade com n8n
   createdAt?: string;
@@ -14,7 +14,7 @@ export interface UserAuth {
 
 export interface SecureAppointment {
   id: string;
-  whatsapp: string;
+  phone: string;
   name: string;
   securitycode: string; // Minúsculo para compatibilidade com n8n
   service: any;
@@ -32,20 +32,14 @@ export const generateSecurityCode = (): string => {
 };
 
 // Validar acesso do usuário
-export const validateUserAccess = async (whatsapp: string, securityCode: string, companyId?: string): Promise<boolean> => {
+export const validateUserAccess = async (phone: string, securityCode: string): Promise<boolean> => {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('user_auth')
       .select('*')
-      .eq('whatsapp', whatsapp)
-      .eq('securitycode', securityCode);
-
-    // Se companyId é fornecido, incluir na validação
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-
-    const { data, error } = await query.single();
+      .eq('phone', phone)
+      .eq('securitycode', securityCode)
+      .single();
 
     if (error) {
       console.error('Erro ao validar acesso:', error);
@@ -60,25 +54,18 @@ export const validateUserAccess = async (whatsapp: string, securityCode: string,
 };
 
 // Criar ou atualizar usuário
-export const upsertUser = async (whatsapp: string, name: string, companyId?: string): Promise<string> => {
+export const upsertUser = async (phone: string, name: string): Promise<string> => {
   const securityCode = generateSecurityCode();
   
   try {
-    const userData: any = {
-      whatsapp,
-      name,
-      securitycode: securityCode
-    };
-
-    // Adicionar company_id se fornecido (sem validação de existência)
-    if (companyId) {
-      userData.company_id = companyId;
-    }
-
     const { data, error } = await supabase
       .from('user_auth')
-      .upsert(userData, {
-        onConflict: 'whatsapp'
+      .upsert({
+        phone,
+        name,
+        securitycode: securityCode
+      }, {
+        onConflict: 'phone'
       })
       .select()
       .single();
@@ -95,20 +82,14 @@ export const upsertUser = async (whatsapp: string, name: string, companyId?: str
   }
 };
 
-// Buscar usuário por whatsapp
-export const getUserByWhatsapp = async (whatsapp: string, companyId?: string): Promise<UserAuth | null> => {
+// Buscar usuário por telefone
+export const getUserByPhone = async (phone: string): Promise<UserAuth | null> => {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('user_auth')
       .select('*')
-      .eq('whatsapp', whatsapp);
-
-    // Se companyId é fornecido, incluir na busca
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-
-    const { data, error } = await query.single();
+      .eq('phone', phone)
+      .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found
       console.error('Erro ao buscar usuário:', error);
@@ -123,13 +104,13 @@ export const getUserByWhatsapp = async (whatsapp: string, companyId?: string): P
 };
 
 // Salvar agendamento no Supabase
-export const saveAppointmentToSupabase = async (appointment: any, whatsapp: string, securityCode: string): Promise<void> => {
+export const saveAppointmentToSupabase = async (appointment: any, phone: string, securityCode: string): Promise<void> => {
   try {
     const { error } = await supabase
       .from('appointments')
       .insert({
         id: appointment.id,
-        whatsapp,
+        phone,
         name: appointment.clientName,
         securitycode: securityCode,
         service: appointment.service,
@@ -151,10 +132,10 @@ export const saveAppointmentToSupabase = async (appointment: any, whatsapp: stri
 };
 
 // Gerar link seguro para agendamento
-export const generateSecureLink = (whatsapp: string, securityCode: string, companyId?: string): string => {
+export const generateSecureLink = (phone: string, securityCode: string, companyId?: string): string => {
   const baseUrl = window.location.origin;
   if (companyId) {
-    return `${baseUrl}/${companyId}?whatsapp=${encodeURIComponent(whatsapp)}&code=${encodeURIComponent(securityCode)}`;
+    return `${baseUrl}/${companyId}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
   }
-  return `${baseUrl}?whatsapp=${encodeURIComponent(whatsapp)}&code=${encodeURIComponent(securityCode)}`;
+  return `${baseUrl}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
 };

@@ -1,0 +1,397 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agendamento",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        -560
+      ],
+      "id": "95f16f08-e288-4fb2-ad0e-b99a86cf26aa",
+      "name": "Webhook",
+      "webhookId": "7cb06bcf-7382-4d77-974d-53ffbf868570"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8f208dda-d7d3-4658-98ef-79c400d98d6a",
+              "name": "nome",
+              "value": "={{ $json.body.data.pushName }}",
+              "type": "string"
+            },
+            {
+              "id": "d85da678-b2ba-439a-a933-a62e2e0c3bcf",
+              "name": "whatsapp",
+              "value": "={{ $json.body.data.key.remoteJid.split(\"@\")[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "6f77fc68-e4a3-4bd1-af06-909dc16534b5",
+              "name": "instance",
+              "value": "={{ $json.body.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "141d4a45-e4ad-47a6-924f-79c11716ec27",
+              "name": "fromMe",
+              "value": "={{ $json.body.data.key.fromMe }}",
+              "type": "boolean"
+            },
+            {
+              "id": "310a9c1c-64c4-4e58-a638-cc97d7ceb925",
+              "name": "keyId",
+              "value": "={{ $json.body.data.key.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a744d5bb-469d-454b-b846-961908573819",
+              "name": "textoMensagem",
+              "value": "={{ $json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "94d6ae6c-5d7b-405d-8c13-b9b03ff4e52c",
+              "name": "tipoMensagem",
+              "value": "={{ $json.body.data.messageType }}",
+              "type": "string"
+            },
+            {
+              "id": "51d3f23b-fe47-4c8d-a77d-09ca90a360a7",
+              "name": "base64",
+              "value": "={{ $json.body.data.message.base64 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        -560
+      ],
+      "id": "9cc0a146-bb47-4eb1-81ee-0c1e9e76547a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "={{ $('Edit Fields').item.json.instance }}",
+        "remoteJid": "={{ $('Edit Fields').item.json.whatsapp }}",
+        "messageText": "=Olá, {{ $('Edit Fields').item.json.nome }}🌟\n\nBem vindo novamente!\n\nAcesse seu link exclusivo para agendamento:\n\n{{ $('Generate Auth Existe').item.json.lovableUrl }}",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        -580
+      ],
+      "id": "6560a092-9bf6-4f02-a3c1-8453840b4009",
+      "name": "Evolution API1",
+      "credentials": {
+        "evolutionApi": {
+          "id": "lLVFKOgk3eLZgfyf",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "operation": "get",
+        "tableId": "user_auth",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{ $json.whatsapp }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        60,
+        -560
+      ],
+      "id": "0685f44f-4dca-4945-9879-4bbf7a70ea48",
+      "name": "Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "T0L2VnM0AOCnwWJP",
+          "name": "Supabase account Protalk"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f8655d67-d21d-4b62-87ed-cb0ba2ac47db",
+              "leftValue": "",
+              "rightValue": "={{ $json.phone }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        280,
+        -560
+      ],
+      "id": "962d988a-52bb-4791-b649-92fee57c9ebb",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_auth",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $('Edit Fields').item.json.whatsapp }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "securitycode",
+              "fieldValue": "={{ $json.securityCode }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        900,
+        -580
+      ],
+      "id": "e123bc2e-b7d2-4664-b43d-20a6a4b86365",
+      "name": "Supabase1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "T0L2VnM0AOCnwWJP",
+          "name": "Supabase account Protalk"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "={{ $('Edit Fields').item.json.instance }}",
+        "remoteJid": "={{ $('Edit Fields').item.json.whatsapp }}",
+        "messageText": "=Olá, {{ $('Edit Fields').item.json.nome }}🌟\n\nBem vindo novamente!\n\nAcesse seu link exclusivo para agendamento:\n\n{{ $('Generate Auth Existe').item.json.lovableUrl }}",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        -300
+      ],
+      "id": "8b0ffac7-4af7-4d96-9f0e-b11611148eec",
+      "name": "Evolution API",
+      "credentials": {
+        "evolutionApi": {
+          "id": "lLVFKOgk3eLZgfyf",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_auth",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $('Edit Fields').item.json.whatsapp }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "securitycode",
+              "fieldValue": "={{ $json.securityCode }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -300
+      ],
+      "id": "842a4517-dedf-4d73-9ea1-0572bf258111",
+      "name": "Supabase2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "T0L2VnM0AOCnwWJP",
+          "name": "Supabase account Protalk"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Função para gerar código aleatório\nfunction generateSecurityCode() {\n  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\n  let code = '';\n  for (let i = 0; i < 8; i++) {\n    code += chars.charAt(Math.floor(Math.random() * chars.length));\n  }\n  return code;\n}\n\nconst editData = $input.all()[0]?.json;\nconst supabaseData = $input.all()[1]?.json?.data || [];\n\nconst isNewClient = supabaseData.length === 0;\nconst whatsapp = editData.whatsapp || editData.phone;\nconst nome = editData.nome || editData.name || \"Cliente\";\n\nif (!whatsapp) {\n  throw new Error(\"Número de WhatsApp não encontrado.\");\n}\n\nconst securityCode = generateSecurityCode();\nconst lovableUrl = `https://agendamentos-protalk.lovable.app/?phone=${whatsapp}&code=${securityCode}`;\n\nif (isNewClient) {\n  return [{\n    json: {\n      phone: whatsapp,\n      name: nome,\n      securityCode,\n      lovableUrl,\n      isNewClient: true\n    }\n  }];\n} else {\n  const client = supabaseData[0];\n  return [{\n    json: {\n      ...client,\n      lovableUrl,\n      isNewClient: false\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        -300
+      ],
+      "id": "7910b048-de37-4771-84c8-a570a651adce",
+      "name": "Generate Auth Code N Existe"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Função para gerar código aleatório\nfunction generateSecurityCode() {\n  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\n  let code = '';\n  for (let i = 0; i < 8; i++) {\n    code += chars.charAt(Math.floor(Math.random() * chars.length));\n  }\n  return code;\n}\n\nconst editData = $input.all()[0]?.json;\nconst supabaseData = $input.all()[1]?.json?.data || [];\n\nconst isNewClient = supabaseData.length === 0;\nconst whatsapp = editData.whatsapp || editData.phone;\nconst nome = editData.nome || editData.name || \"Cliente\";\n\nif (!whatsapp) {\n  throw new Error(\"Número de WhatsApp não encontrado.\");\n}\n\nconst securityCode = generateSecurityCode();\nconst lovableUrl = `https://agendamentos-protalk.lovable.app/?phone=${whatsapp}&code=${securityCode}`;\n\nif (isNewClient) {\n  return [{\n    json: {\n      phone: whatsapp,\n      name: nome,\n      securityCode,\n      lovableUrl,\n      isNewClient: true\n    }\n  }];\n} else {\n  const client = supabaseData[0];\n  return [{\n    json: {\n      ...client,\n      lovableUrl,\n      isNewClient: false\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        -580
+      ],
+      "id": "db830f0c-304b-4a34-a510-1227aa6c429b",
+      "name": "Generate Auth Existe"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Generate Auth Existe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Auth Code N Existe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Evolution API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase2": {
+      "main": [
+        [
+          {
+            "node": "Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Auth Code N Existe": {
+      "main": [
+        [
+          {
+            "node": "Supabase2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Auth Existe": {
+      "main": [
+        [
+          {
+            "node": "Supabase1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  }
+}
