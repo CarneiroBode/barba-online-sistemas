@@ -8,13 +8,20 @@ import DateTimeSelection from "@/components/DateTimeSelection";
 import AppointmentConfirmation from "@/components/AppointmentConfirmation";
 import MyAppointments from "@/components/MyAppointments";
 import { useToast } from "@/hooks/use-toast";
+import Welcome from "@/components/Welcome";
+import Auth from "@/components/Auth";
 import { 
   validateUserAccess, 
   upsertUser, 
   getUserByPhone, 
   saveAppointmentToSupabase,
-  generateSecureLink 
-} from "@/utils/supabase";
+  generateSecureLink,
+  getCompanyInfo,
+  getServices,
+  getAppointments,
+  saveAppointment,
+  updateAppointmentStatus
+} from "@/utils/supabaseOperations";
 
 export interface Service {
   id: string;
@@ -33,7 +40,7 @@ export interface Appointment {
   date: string;
   time: string;
   status: 'confirmed' | 'cancelled';
-  createdAt: string;
+  createdAt?: string;
   companyId?: string;
 }
 
@@ -42,6 +49,8 @@ interface CompanyInfo {
   address: string;
   phone: string;
   professionalName: string;
+  whatsapp: string;
+  socialMedia: string;
 }
 
 const Index = () => {
@@ -63,12 +72,15 @@ const Index = () => {
     name: 'MEUS AGENDAMENTOS',
     address: '',
     phone: '',
-    professionalName: 'Profissional'
+    professionalName: 'Profissional',
+    whatsapp: '',
+    socialMedia: ''
   });
 
   // Dados dinâmicos - carregados do localStorage
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Extrair company_id da URL
   const extractCompanyId = (): string => {
@@ -81,44 +93,6 @@ const Index = () => {
   const validateCompany = (companyId: string): boolean => {
     const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
     return adminUsers.some((user: any) => user.companyId === companyId);
-  };
-
-  // Carregar dados específicos da empresa
-  const loadCompanyData = (companyId: string) => {
-    // Carregar informações da empresa
-    const savedCompanyInfo = localStorage.getItem(`${companyId}_companyInfo`);
-    if (savedCompanyInfo) {
-      setCompanyInfo(JSON.parse(savedCompanyInfo));
-    } else {
-      // Buscar nome da empresa nos dados do admin
-      const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-      const company = adminUsers.find((user: any) => user.companyId === companyId);
-      if (company) {
-        setCompanyInfo(prev => ({
-          ...prev,
-          name: company.companyName || 'MEUS AGENDAMENTOS'
-        }));
-      }
-    }
-
-    // Carregar serviços da empresa
-    const savedServices = localStorage.getItem(`${companyId}_services`);
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    } else {
-      // Serviços padrão apenas se não houver salvos
-      const defaultServices: Service[] = [
-        { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
-        { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
-      ];
-      setServices(defaultServices);
-    }
-
-    // Carregar agendamentos da empresa
-    const savedAppointments = localStorage.getItem(`${companyId}_appointments`);
-    if (savedAppointments) {
-      setAppointments(JSON.parse(savedAppointments));
-    }
   };
 
   useEffect(() => {
@@ -139,7 +113,7 @@ const Index = () => {
       }
 
       setCompanyId(extractedCompanyId);
-      loadCompanyData(extractedCompanyId);
+      await loadInitialData();
 
       // Verificar parâmetros da URL
       const phone = searchParams.get('phone');
@@ -186,6 +160,50 @@ const Index = () => {
     initializeApp();
   }, [searchParams, location.pathname, toast]);
 
+  useEffect(() => {
+    loadInitialData();
+  }, [companyId]);
+
+  const loadInitialData = async () => {
+    try {
+      if (!companyId) {
+        setError("ID da empresa não fornecido");
+        return;
+      }
+
+      // Carregar informações da empresa
+      const companyData = await getCompanyInfo(companyId);
+      if (companyData) {
+        setCompanyInfo({
+          name: companyData.name,
+          address: companyData.address,
+          phone: companyData.phone,
+          professionalName: companyData.professional_name,
+          whatsapp: companyData.whatsapp,
+          socialMedia: companyData.social_media
+        });
+      } else {
+        setError("Empresa não encontrada");
+        return;
+      }
+
+      // Carregar serviços
+      const servicesData = await getServices(companyId);
+      if (servicesData && servicesData.length > 0) {
+        setServices(servicesData);
+      }
+
+      // Carregar agendamentos
+      const appointmentsData = await getAppointments(companyId);
+      if (appointmentsData) {
+        setAppointments(appointmentsData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setError("Erro ao carregar dados da empresa");
+    }
+  };
+
   const handleNameSubmit = async () => {
     if (nameInput.trim() && clientPhone) {
       try {
@@ -226,71 +244,78 @@ const Index = () => {
     setStep('confirmation');
   };
 
-  const handleConfirmAppointment = async () => {
-    if (!selectedService || !selectedDate || !selectedTime || !isAuthenticated || !companyId) return;
-
-    const newAppointment: Appointment = {
-      id: Date.now().toString(),
-      clientName,
-      clientPhone,
-      service: selectedService,
-      professional: companyInfo.professionalName || 'Profissional',
-      date: selectedDate,
-      time: selectedTime,
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
-      companyId: companyId
-    };
-
-    try {
-      // Salvar no localStorage específico da empresa
-      const updatedAppointments = [...appointments, newAppointment];
-      setAppointments(updatedAppointments);
-      localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
-
-      // Salvar no Supabase
-      await saveAppointmentToSupabase(newAppointment, clientPhone, securityCode);
-
-      // Enviar webhook para n8n (quando integrado)
-      try {
-        const webhookData = {
-          type: 'appointment_confirmed',
-          appointment: newAppointment,
-          companyInfo: companyInfo,
-          companyId: companyId,
-          secureLink: generateSecureLink(clientPhone, securityCode),
-          timestamp: new Date().toISOString()
-        };
-
-        console.log('Enviando para webhook n8n:', webhookData);
-
-        toast({
-          title: "Agendamento confirmado!",
-          description: `${selectedService.name} agendado para ${selectedDate} às ${selectedTime}`,
-        });
-      } catch (error) {
-        console.error('Erro ao enviar webhook:', error);
-      }
-    } catch (error) {
+  const handleSchedule = async () => {
+    if (!selectedService || !selectedDate || !selectedTime || !clientName || !clientPhone) {
       toast({
         title: "Erro",
-        description: "Erro ao confirmar agendamento. Tente novamente.",
+        description: "Por favor, preencha todos os campos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const appointment: Appointment = {
+        id: Date.now().toString(),
+        clientName,
+        clientPhone,
+        service: selectedService,
+        professional: companyInfo.professionalName || 'Profissional',
+        date: selectedDate,
+        time: selectedTime,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        companyId
+      };
+
+      await saveAppointment(appointment, companyId);
+      
+      const updatedAppointments = [...appointments, appointment];
+      setAppointments(updatedAppointments);
+
+      toast({
+        title: "Agendamento realizado!",
+        description: "Seu horário foi agendado com sucesso.",
+      });
+
+      // Limpar formulário
+      setClientName('');
+      setClientPhone('');
+      setSelectedService(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setStep('welcome' as const);
+    } catch (error) {
+      console.error('Erro ao salvar agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível realizar o agendamento. Por favor, tente novamente.",
         variant: "destructive"
       });
     }
   };
 
-  const handleCancelAppointment = (appointmentId: string) => {
-    const updatedAppointments = appointments.map(apt => 
-      apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
-    );
-    setAppointments(updatedAppointments);
-    localStorage.setItem(`${companyId}_appointments`, JSON.stringify(updatedAppointments));
+  const handleCancel = async (appointmentId: string) => {
+    try {
+      await updateAppointmentStatus(appointmentId, 'cancelled');
+      
+      const updatedAppointments = appointments.map(apt => 
+        apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
+      );
+      setAppointments(updatedAppointments);
 
-    toast({
-      title: "Agendamento cancelado",
-      description: "Seu horário foi cancelado com sucesso.",
-    });
+      toast({
+        title: "Agendamento cancelado",
+        description: "Seu agendamento foi cancelado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao cancelar agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cancelar o agendamento. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Tela de autenticação
@@ -401,7 +426,7 @@ const Index = () => {
           time={selectedTime}
           professional={companyInfo.professionalName || 'Profissional'}
           companyInfo={companyInfo}
-          onConfirm={handleConfirmAppointment}
+          onConfirm={handleSchedule}
           onNewAppointment={() => {
             setSelectedService(null);
             setSelectedDate('');
@@ -416,7 +441,7 @@ const Index = () => {
         <MyAppointments
           appointments={appointments.filter(apt => apt.clientPhone === clientPhone)}
           onBack={() => setStep('welcome')}
-          onCancelAppointment={handleCancelAppointment}
+          onCancelAppointment={handleCancel}
           onNewAppointment={() => setStep('service')}
         />
       )}

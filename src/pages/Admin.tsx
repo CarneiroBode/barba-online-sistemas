@@ -11,6 +11,16 @@ import AdminAuth from "@/components/AdminAuth";
 import UserManagement from "@/components/UserManagement";
 import CalendarView from "@/components/CalendarView";
 import BusinessHours from "@/components/BusinessHours";
+import {
+  saveCompanyInfo,
+  getCompanyInfo,
+  saveService,
+  getServices,
+  deleteService,
+  saveAppointment,
+  getAppointments,
+  updateAppointmentStatus
+} from "@/utils/supabaseOperations";
 
 interface CompanyInfo {
   name: string;
@@ -77,65 +87,80 @@ const Admin = () => {
     }
   }, [currentUser]);
 
-  const loadUserData = () => {
-    // Determinar o prefixo dos dados baseado no tipo de usuário
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    
-    const savedAppointments = localStorage.getItem(`${dataPrefix}appointments`);
-    if (savedAppointments) {
-      setAppointments(JSON.parse(savedAppointments));
-    }
+  const loadUserData = async () => {
+    try {
+      if (currentUser) {
+        // Carregar agendamentos
+        const appointments = await getAppointments(currentUser.companyId || '');
+        setAppointments(appointments);
 
-    const savedServices = localStorage.getItem(`${dataPrefix}services`);
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    } else {
-      // Serviços padrão apenas se não houver salvos
-      const defaultServices: Service[] = [
-        { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
-        { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
-      ];
-      setServices(defaultServices);
-      localStorage.setItem(`${dataPrefix}services`, JSON.stringify(defaultServices));
-    }
+        // Carregar serviços
+        const services = await getServices(currentUser.companyId || '');
+        if (services && services.length > 0) {
+          setServices(services);
+        } else {
+          // Serviços padrão apenas se não houver salvos
+          const defaultServices: Service[] = [
+            { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
+            { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
+          ];
+          setServices(defaultServices);
+          // Salvar serviços padrão no Supabase
+          for (const service of defaultServices) {
+            await saveService(service, currentUser.companyId || '');
+          }
+        }
 
-    const savedCompanyInfo = localStorage.getItem(`${dataPrefix}companyInfo`);
-    if (savedCompanyInfo) {
-      setCompanyInfo(JSON.parse(savedCompanyInfo));
-    } else if (currentUser?.role === 'client') {
-      // Para clientes, buscar dados da empresa dos dados do usuário
-      const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-      const userCompany = adminUsers.find((user: any) => user.companyId === currentUser.companyId);
-      
-      if (userCompany) {
-        setCompanyInfo({
-          name: userCompany.companyName || '',
-          address: userCompany.address || '',
-          phone: userCompany.whatsapp || '',
-          professionalName: '',
-          cpfCnpj: userCompany.cpfCnpj || '',
-          whatsapp: userCompany.whatsapp || '',
-          socialMedia: userCompany.socialMedia || '',
-          companyId: userCompany.companyId || ''
-        });
-      } else {
-        // Fallback para dados básicos
-        setCompanyInfo(prev => ({
-          ...prev,
-          name: currentUser.companyName || '',
-          companyId: currentUser.companyId || ''
-        }));
+        // Carregar informações da empresa
+        if (currentUser.role === 'client') {
+          const companyData = await getCompanyInfo(currentUser.companyId || '');
+          if (companyData) {
+            setCompanyInfo({
+              name: companyData.name,
+              address: companyData.address,
+              phone: companyData.phone,
+              professionalName: companyData.professional_name,
+              cpfCnpj: companyData.cpf_cnpj,
+              whatsapp: companyData.whatsapp,
+              socialMedia: companyData.social_media,
+              companyId: companyData.company_id
+            });
+          }
+        }
       }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados. Por favor, tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 
-  const saveCompanyInfo = () => {
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    localStorage.setItem(`${dataPrefix}companyInfo`, JSON.stringify(companyInfo));
-    toast({
-      title: "Informações salvas!",
-      description: "As informações da empresa foram atualizadas com sucesso.",
-    });
+  const saveCompanyInfoHandler = async () => {
+    try {
+      await saveCompanyInfo({
+        company_id: currentUser?.companyId || '',
+        name: companyInfo.name,
+        address: companyInfo.address,
+        phone: companyInfo.phone,
+        whatsapp: companyInfo.whatsapp,
+        professional_name: companyInfo.professionalName
+      });
+      
+      toast({
+        title: "Informações salvas!",
+        description: "As informações da empresa foram atualizadas com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar informações:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as informações. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -147,7 +172,7 @@ const Admin = () => {
     });
   };
 
-  const addService = () => {
+  const addService = async () => {
     if (!newService.name.trim()) {
       toast({
         title: "Erro",
@@ -157,52 +182,76 @@ const Admin = () => {
       return;
     }
 
-    const service: Service = {
-      id: Date.now().toString(),
-      name: newService.name,
-      price: newService.price,
-      duration: newService.duration
-    };
+    try {
+      const service: Service = {
+        id: Date.now().toString(),
+        name: newService.name,
+        price: newService.price,
+        duration: newService.duration
+      };
 
-    const updatedServices = [...services, service];
-    setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
-    setNewService({ name: '', price: 0, duration: 30 });
-    
-    toast({
-      title: "Serviço adicionado!",
-      description: `${service.name} foi adicionado com sucesso.`,
-    });
+      await saveService(service, currentUser?.companyId || '');
+      const updatedServices = [...services, service];
+      setServices(updatedServices);
+      setNewService({ name: '', price: 0, duration: 30 });
+      
+      toast({
+        title: "Serviço adicionado!",
+        description: `${service.name} foi adicionado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar serviço:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o serviço. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const updateService = () => {
+  const updateService = async () => {
     if (!editingService) return;
 
-    const updatedServices = services.map(service => 
-      service.id === editingService.id ? editingService : service
-    );
-    setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
-    setEditingService(null);
-    
-    toast({
-      title: "Serviço atualizado!",
-      description: `${editingService.name} foi atualizado com sucesso.`,
-    });
+    try {
+      await saveService(editingService, currentUser?.companyId || '');
+      const updatedServices = services.map(service => 
+        service.id === editingService.id ? editingService : service
+      );
+      setServices(updatedServices);
+      setEditingService(null);
+      
+      toast({
+        title: "Serviço atualizado!",
+        description: `${editingService.name} foi atualizado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar serviço:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o serviço. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteService = (serviceId: string) => {
-    const updatedServices = services.filter(service => service.id !== serviceId);
-    setServices(updatedServices);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    localStorage.setItem(`${dataPrefix}services`, JSON.stringify(updatedServices));
-    
-    toast({
-      title: "Serviço removido!",
-      description: "O serviço foi removido com sucesso.",
-    });
+  const deleteServiceHandler = async (serviceId: string) => {
+    try {
+      await deleteService(serviceId);
+      const updatedServices = services.filter(service => service.id !== serviceId);
+      setServices(updatedServices);
+      
+      toast({
+        title: "Serviço removido!",
+        description: "O serviço foi removido com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao remover serviço:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o serviço. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -235,19 +284,27 @@ const Admin = () => {
     };
   };
 
-  const cancelAppointment = (appointmentId: string) => {
-    const updatedAppointments = appointments.map(apt => 
-      apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
-    );
-    setAppointments(updatedAppointments);
-    const dataPrefix = currentUser?.role === 'superadmin' ? '' : `${currentUser?.companyId}_`;
-    localStorage.setItem(`${dataPrefix}appointments`, JSON.stringify(updatedAppointments));
-    setCancelDialog({ open: false, appointmentId: null });
-    
-    toast({
-      title: "Agendamento cancelado",
-      description: "O agendamento foi cancelado com sucesso.",
-    });
+  const cancelAppointment = async (appointmentId: string) => {
+    try {
+      await updateAppointmentStatus(appointmentId, 'cancelled');
+      const updatedAppointments = appointments.map(apt => 
+        apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
+      );
+      setAppointments(updatedAppointments);
+      setCancelDialog({ open: false, appointmentId: null });
+      
+      toast({
+        title: "Agendamento cancelado",
+        description: "O agendamento foi cancelado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao cancelar agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cancelar o agendamento. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleChangePassword = () => {
@@ -524,7 +581,7 @@ const Admin = () => {
                 />
               </div>
 
-              <Button onClick={saveCompanyInfo} className="w-full">
+              <Button onClick={saveCompanyInfoHandler} className="w-full">
                 Salvar Informações
               </Button>
             </CardContent>
@@ -773,7 +830,7 @@ const Admin = () => {
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
-                              onClick={() => deleteService(service.id)} 
+                              onClick={() => deleteServiceHandler(service.id)} 
                               variant="destructive" 
                               size="sm"
                             >
