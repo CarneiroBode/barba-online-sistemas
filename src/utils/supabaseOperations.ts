@@ -3,10 +3,10 @@ import { Service, Appointment } from '@/pages/Index';
 
 // Interfaces
 export interface UserAuth {
-  phone: string;
-  name: string;
-  securitycode: string;
-  createdAt?: string;
+  company_whatsapp: string;
+  client_whatsapp: string;
+  security_code: string;
+  created_at?: string;
 }
 
 interface CompanyInfo {
@@ -35,13 +35,18 @@ export const generateSecurityCode = (): string => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
-export const validateUserAccess = async (phone: string, securityCode: string): Promise<boolean> => {
+export const validateUserAccess = async (
+  companyWhatsapp: string,
+  clientWhatsapp: string,
+  securityCode: string
+): Promise<boolean> => {
   try {
     const { data, error } = await supabase
       .from('user_auth')
       .select('*')
-      .eq('phone', phone)
-      .eq('securitycode', securityCode)
+      .eq('company_whatsapp', companyWhatsapp)
+      .eq('client_whatsapp', clientWhatsapp)
+      .eq('security_code', securityCode)
       .single();
 
     if (error) {
@@ -131,12 +136,13 @@ export const saveAppointmentToSupabase = async (appointment: Appointment, phone:
   }
 };
 
-export const generateSecureLink = (phone: string, securityCode: string, companyId?: string): string => {
+export const generateSecureLink = (
+  companyWhatsapp: string,
+  clientWhatsapp: string,
+  securityCode: string
+): string => {
   const baseUrl = window.location.origin;
-  if (companyId) {
-    return `${baseUrl}/${companyId}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
-  }
-  return `${baseUrl}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
+  return `${baseUrl}/${companyWhatsapp}?phone=${encodeURIComponent(clientWhatsapp)}&code=${encodeURIComponent(securityCode)}`;
 };
 
 // Operações de Empresas
@@ -159,15 +165,20 @@ export const saveCompanyInfo = async (companyInfo: CompanyInfo) => {
   return data;
 };
 
-export const getCompanyInfo = async (companyId: string) => {
-  const { data, error } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('company_id', companyId)
-    .single();
+export const getCompanyInfo = async (whatsappId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('whatsapp', whatsappId)
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar informações da empresa:', error);
+    return null;
+  }
 };
 
 // Operações de Usuários
@@ -200,32 +211,36 @@ export const getCompanyUsers = async () => {
 };
 
 // Operações de Serviços
-export const saveService = async (service: Service, companyId: string) => {
-  const { data, error } = await supabase
-    .from('services')
-    .upsert({
-      company_id: companyId,
-      name: service.name,
-      duration: service.duration,
-      price: service.price,
-      is_active: true
-    })
-    .select()
-    .single();
+export const saveService = async (service: Service, whatsappId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .upsert({
+        ...service,
+        company_id: whatsappId,
+      });
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao salvar serviço:', error);
+    return null;
+  }
 };
 
-export const getServices = async (companyId: string) => {
-  const { data, error } = await supabase
-    .from('services')
-    .select('*')
-    .eq('company_id', companyId)
-    .eq('is_active', true);
+export const getServices = async (whatsappId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('company_id', whatsappId);
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar serviços:', error);
+    return null;
+  }
 };
 
 export const deleteService = async (serviceId: string) => {
@@ -238,36 +253,36 @@ export const deleteService = async (serviceId: string) => {
 };
 
 // Operações de Agendamentos
-export const saveAppointment = async (appointment: Appointment, companyId: string) => {
-  const { data, error } = await supabase
-    .from('appointments')
-    .upsert({
-      id: appointment.id,
-      company_id: companyId,
-      phone: appointment.clientPhone,
-      name: appointment.clientName,
-      service: appointment.service,
-      date: appointment.date,
-      time: appointment.time,
-      status: appointment.status,
-      is_active: true
-    })
-    .select()
-    .single();
+export const saveAppointment = async (appointment: Appointment, whatsappId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .upsert({
+        ...appointment,
+        company_id: whatsappId,
+      });
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao salvar agendamento:', error);
+    return null;
+  }
 };
 
-export const getAppointments = async (companyId: string) => {
-  const { data, error } = await supabase
-    .from('appointments')
-    .select('*')
-    .eq('company_id', companyId)
-    .eq('is_active', true);
+export const getAppointments = async (whatsappId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('company_id', whatsappId);
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar agendamentos:', error);
+    return null;
+  }
 };
 
 export const updateAppointmentStatus = async (appointmentId: string, status: 'confirmed' | 'cancelled') => {

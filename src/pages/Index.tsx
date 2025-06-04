@@ -22,6 +22,7 @@ import {
   saveAppointment,
   updateAppointmentStatus
 } from "@/utils/supabaseOperations";
+import { supabase } from "@/lib/supabase";
 
 export interface Service {
   id: string;
@@ -49,7 +50,7 @@ interface CompanyInfo {
   address: string;
   phone: string;
   professionalName: string;
-  whatsapp: string;
+  whatsapp: string; // Este campo agora será usado como ID da empresa
   socialMedia: string;
 }
 
@@ -82,78 +83,107 @@ const Index = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Extrair company_id da URL
+  // Extrair company_id da URL (agora usando whatsapp)
   const extractCompanyId = (): string => {
     const path = location.pathname;
     const pathSegments = path.split('/').filter(segment => segment);
-    return pathSegments[0] || '';
+    const companyId = pathSegments[0] || '';
+    
+    // Verifica se é a rota de admin
+    if (companyId === 'admin') {
+      return companyId;
+    }
+
+    // Valida se o ID é um número de WhatsApp válido (13 dígitos)
+    const whatsappRegex = /^\d{13}$/;
+    if (!whatsappRegex.test(companyId)) {
+      console.error('ID da empresa inválido: deve ser um número de WhatsApp com 13 dígitos');
+      return '';
+    }
+
+    return companyId;
   };
 
   // Verificar se a empresa existe
-  const validateCompany = (companyId: string): boolean => {
-    const adminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    return adminUsers.some((user: any) => user.companyId === companyId);
+  const validateCompany = async (whatsappId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('whatsapp')
+        .eq('whatsapp', whatsappId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao validar empresa:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Erro ao validar empresa:', error);
+      return false;
+    }
   };
 
   useEffect(() => {
     const initializeApp = async () => {
-      const extractedCompanyId = extractCompanyId();
+      const companyWhatsapp = extractCompanyId(); // Agora retorna o whatsapp da empresa
+      const clientWhatsapp = searchParams.get('phone') || '';
+      const code = searchParams.get('code') || '';
 
-      if (!extractedCompanyId) {
-        // URL sem company_id - não autenticar
-        setIsAuthenticated(false);
+      // Rota de admin
+      if (companyWhatsapp === 'admin') {
+        // Lógica para admin
         return;
       }
 
-      // Verificar se a empresa existe
-      if (!validateCompany(extractedCompanyId)) {
-        // Empresa não encontrada - não autenticar
+      // Validação do formato dos números WhatsApp
+      const whatsappRegex = /^\d{13}$/;
+      const isValidCompanyWhatsapp = whatsappRegex.test(companyWhatsapp);
+      const isValidClientWhatsapp = whatsappRegex.test(clientWhatsapp);
+
+      // Validação da URL completa
+      if (!isValidCompanyWhatsapp || !isValidClientWhatsapp || !code) {
         setIsAuthenticated(false);
+        toast({
+          title: "URL Inválida",
+          description: "Por favor, use o link enviado via WhatsApp para acessar o sistema de agendamento.",
+          variant: "destructive"
+        });
         return;
       }
 
-      setCompanyId(extractedCompanyId);
-      await loadInitialData();
-
-      // Verificar parâmetros da URL
-      const phone = searchParams.get('phone');
-      const code = searchParams.get('code');
-
-      if (phone && code) {
-        // Validar acesso com código de segurança
-        const isValid = await validateUserAccess(phone, code);
-        if (isValid) {
-          const user = await getUserByPhone(phone);
-          if (user) {
-            setClientPhone(phone);
-            setClientName(user.name);
-            setSecurityCode(code);
-            setIsAuthenticated(true);
-            setStep('service'); // Vai direto para seleção de serviço
-            toast({
-              title: `Olá, ${user.name}!`,
-              description: "Acesso autorizado. Bem-vindo de volta!",
-            });
-          }
-        } else {
-          // Link inválido ou expirado - não autenticar
+      try {
+        // Validar acesso
+        const isValid = await validateUserAccess(companyWhatsapp, clientWhatsapp, code);
+        if (!isValid) {
           setIsAuthenticated(false);
+          toast({
+            title: "Acesso Negado",
+            description: "Link inválido ou expirado. Por favor, solicite um novo link.",
+            variant: "destructive"
+          });
+          return;
         }
-      } else if (phone) {
-        // Apenas telefone fornecido - verificar se usuário existe
-        const user = await getUserByPhone(phone);
-        if (user) {
-          // Link incompleto - não autenticar
-          setIsAuthenticated(false);
-        } else {
-          // Novo usuário
-          setClientPhone(phone);
-          setIsNewClient(true);
-          setStep('auth');
-        }
-      } else {
-        // Apenas company_id - permitir cadastro de novo usuário
-        setStep('auth');
+
+        // Se chegou aqui, a autenticação foi bem sucedida
+        setClientPhone(clientWhatsapp);
+        setSecurityCode(code);
+        setCompanyId(companyWhatsapp);
+        setIsAuthenticated(true);
+        setStep('service');
+
+        // Carregar dados da empresa
+        await loadInitialData();
+
+      } catch (error) {
+        console.error('Erro na autenticação:', error);
+        setIsAuthenticated(false);
+        toast({
+          title: "Erro",
+          description: "Ocorreu um erro ao validar seu acesso. Por favor, tente novamente.",
+          variant: "destructive"
+        });
       }
     };
 
@@ -215,7 +245,7 @@ const Index = () => {
         setStep('welcome');
 
         // Gerar link seguro para o usuário
-        const secureLink = generateSecureLink(clientPhone, newSecurityCode);
+        const secureLink = generateSecureLink(companyId, clientPhone, newSecurityCode);
 
         toast({
           title: `Bem-vindo, ${nameInput}!`,
@@ -366,8 +396,9 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md mx-auto text-center">
+          <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
           <p className="text-lg text-gray-300">
-            Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar seus agendamentos.
+            Por favor, use o link enviado via WhatsApp para acessar o sistema de agendamento.
           </p>
         </div>
       </div>
