@@ -1,3 +1,4 @@
+
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -89,6 +90,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Rota protegida de exemplo
   app.get('/api/user-info', async (req: Request, res: Response) => {
+    if (!req.validatedAccess) {
+      return res.status(401).json({ error: "Acesso não validado" });
+    }
+
     const { company_id, whatsapp, codigo } = req.validatedAccess;
 
     // Aqui você pode buscar informações específicas da empresa/usuário
@@ -105,6 +110,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rota para marcar URL como usada (opcional)
   app.post('/api/mark-used', async (req: Request, res: Response) => {
     try {
+      if (!req.validatedAccess) {
+        return res.status(401).json({ error: "Acesso não validado" });
+      }
+
       const { validation_id } = req.validatedAccess;
       await storage.markUrlValidationAsUsed(validation_id);
       res.json({ success: true, message: "URL marcada como utilizada" });
