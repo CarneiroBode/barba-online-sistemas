@@ -3,14 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const companies = pgTable("companies", {
-  id: text("id").primaryKey(),
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   active: boolean("active").default(true),
 });
 
 export const urlValidations = pgTable("url_validations", {
   id: serial("id").primaryKey(),
-  company_id: text("company_id").notNull().references(() => companies.id),
+  company_id: integer("company_id").notNull().references(() => companies.id),
   whatsapp: text("whatsapp").notNull(),
   codigo: text("codigo").notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -22,7 +22,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  company_id: text("company_id").references(() => companies.id),
+  company_id: integer("company_id").references(() => companies.id),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

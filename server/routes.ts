@@ -1,4 +1,3 @@
-
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -15,8 +14,9 @@ async function validateUrlAccess(req: Request, res: Response, next: NextFunction
   }
 
   try {
+    const companyIdNum = parseInt(company_id as string);
     const validation = await storage.validateUrlAccess(
-      company_id as string, 
+      companyIdNum, 
       whatsapp as string, 
       codigo as string
     );
@@ -29,7 +29,7 @@ async function validateUrlAccess(req: Request, res: Response, next: NextFunction
 
     // Armazena os dados validados na requisição para uso posterior
     req.validatedAccess = {
-      company_id: company_id as string,
+      company_id: companyIdNum,
       whatsapp: whatsapp as string,
       codigo: codigo as string,
       validation_id: validation.id
@@ -51,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/generate-url', async (req: Request, res: Response) => {
     try {
       const { company_id, whatsapp, codigo, expires_hours = 24 } = req.body;
-
+      
       if (!company_id || !whatsapp || !codigo) {
         return res.status(400).json({ 
           error: "Campos obrigatórios: company_id, whatsapp, codigo" 
@@ -90,15 +90,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Rota protegida de exemplo
   app.get('/api/user-info', async (req: Request, res: Response) => {
-    if (!req.validatedAccess) {
-      return res.status(401).json({ error: "Acesso não validado" });
-    }
-
     const { company_id, whatsapp, codigo } = req.validatedAccess;
-
+    
     // Aqui você pode buscar informações específicas da empresa/usuário
     const company = await storage.getCompany(company_id);
-
+    
     res.json({
       success: true,
       company: company?.name,
@@ -110,10 +106,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rota para marcar URL como usada (opcional)
   app.post('/api/mark-used', async (req: Request, res: Response) => {
     try {
-      if (!req.validatedAccess) {
-        return res.status(401).json({ error: "Acesso não validado" });
-      }
-
       const { validation_id } = req.validatedAccess;
       await storage.markUrlValidationAsUsed(validation_id);
       res.json({ success: true, message: "URL marcada como utilizada" });
@@ -131,7 +123,7 @@ declare global {
   namespace Express {
     interface Request {
       validatedAccess?: {
-        company_id: string;
+        company_id: number;
         whatsapp: string;
         codigo: string;
         validation_id: number;
