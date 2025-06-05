@@ -1,28 +1,21 @@
-import { supabase } from './supabase';
+import { supabase } from '@/lib/supabase';
 import { Service, Appointment } from '@/pages/Index';
 
 // Interfaces
-export interface UserAuth {
-  company_whatsapp: string;
-  client_whatsapp: string;
-  security_code: string;
-  created_at?: string;
-}
-
 interface CompanyInfo {
-  company_id: string;
+  whatsapp: string;
   name: string;
   address: string;
   phone: string;
-  whatsapp?: string;
-  email?: string;
   professional_name: string;
-  is_active?: boolean;
+  social_media?: string;
+  professionalName?: string;
+  socialMedia?: string;
 }
 
 interface CompanyUser {
-  id?: string;
-  company_id: string;
+  id: string;
+  company_whatsapp: string;
   username: string;
   password: string;
   name: string;
@@ -42,11 +35,13 @@ export const validateUserAccess = async (
 ): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .from('user_auth')
+      .from('url_validations')
       .select('*')
       .eq('company_whatsapp', companyWhatsapp)
       .eq('client_whatsapp', clientWhatsapp)
       .eq('security_code', securityCode)
+      .eq('is_valid', true)
+      .gt('expires_at', new Date().toISOString())
       .single();
 
     if (error) {
@@ -109,21 +104,19 @@ export const getUserByPhone = async (phone: string): Promise<UserAuth | null> =>
   }
 };
 
-export const saveAppointmentToSupabase = async (appointment: Appointment, phone: string, securityCode: string): Promise<void> => {
+export const saveAppointmentToSupabase = async (appointment: Appointment): Promise<void> => {
   try {
     const { error } = await supabase
       .from('appointments')
       .insert({
         id: appointment.id,
-        phone,
-        name: appointment.clientName,
-        securitycode: securityCode,
-        service: appointment.service,
-        professional: appointment.professional,
+        client_whatsapp: appointment.clientWhatsapp,
+        client_name: appointment.clientName,
+        service_id: appointment.serviceId,
         date: appointment.date,
         time: appointment.time,
         status: appointment.status,
-        company_id: appointment.companyId
+        company_whatsapp: appointment.company_whatsapp
       });
 
     if (error) {
@@ -147,36 +140,55 @@ export const generateSecureLink = (
 
 // Operações de Empresas
 export const saveCompanyInfo = async (companyInfo: CompanyInfo) => {
-  const { data, error } = await supabase
-    .from('companies')
-    .upsert({
-      company_id: companyInfo.company_id,
-      name: companyInfo.name,
-      address: companyInfo.address,
-      phone: companyInfo.phone,
-      whatsapp: companyInfo.whatsapp,
-      professional_name: companyInfo.professional_name,
-      is_active: true
-    })
-    .select()
-    .single();
+  try {
+    console.log('Tentando salvar empresa:', companyInfo);
+    
+    const { data, error } = await supabase
+      .from('companies')
+      .upsert({
+        whatsapp: companyInfo.whatsapp.replace(/\D/g, ''), // Remove formatação
+        name: companyInfo.name,
+        address: companyInfo.address,
+        phone: companyInfo.phone,
+        professional_name: companyInfo.professional_name || companyInfo.professionalName, // Handle both field names
+        social_media: companyInfo.social_media || companyInfo.socialMedia,
+        is_active: true
+      })
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) {
+      console.error('Erro ao salvar empresa:', error);
+      throw error;
+    }
+
+    console.log('Empresa salva com sucesso:', data);
+    return data;
+  } catch (error) {
+    console.error('Erro ao salvar empresa:', error);
+    throw error;
+  }
 };
 
 export const getCompanyInfo = async (whatsappId: string) => {
   try {
+    console.log('Buscando empresa com WhatsApp:', whatsappId);
+    
     const { data, error } = await supabase
       .from('companies')
       .select('*')
-      .eq('whatsapp', whatsappId)
+      .eq('whatsapp', whatsappId.replace(/\D/g, '')) // Remove formatação
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Erro ao buscar empresa:', error);
+      throw error;
+    }
+
+    console.log('Empresa encontrada:', data);
     return data;
   } catch (error) {
-    console.error('Erro ao buscar informações da empresa:', error);
+    console.error('Erro ao buscar empresa:', error);
     return null;
   }
 };
@@ -186,9 +198,9 @@ export const saveCompanyUser = async (user: CompanyUser) => {
   const { data, error } = await supabase
     .from('company_users')
     .upsert({
-      company_id: user.company_id,
+      company_whatsapp: user.company_whatsapp,
       username: user.username,
-      password: user.password, // Em produção, deve-se usar hash
+      password: user.password,
       name: user.name,
       role: user.role,
       is_active: true
@@ -211,13 +223,13 @@ export const getCompanyUsers = async () => {
 };
 
 // Operações de Serviços
-export const saveService = async (service: Service, whatsappId: string) => {
+export const saveService = async (service: Service, companyWhatsapp: string) => {
   try {
     const { data, error } = await supabase
       .from('services')
       .upsert({
         ...service,
-        company_id: whatsappId,
+        company_whatsapp: companyWhatsapp
       });
 
     if (error) throw error;
@@ -228,12 +240,12 @@ export const saveService = async (service: Service, whatsappId: string) => {
   }
 };
 
-export const getServices = async (whatsappId: string) => {
+export const getServices = async (companyWhatsapp: string) => {
   try {
     const { data, error } = await supabase
       .from('services')
       .select('*')
-      .eq('company_id', whatsappId);
+      .eq('company_whatsapp', companyWhatsapp);
 
     if (error) throw error;
     return data;
@@ -246,20 +258,25 @@ export const getServices = async (whatsappId: string) => {
 export const deleteService = async (serviceId: string) => {
   const { error } = await supabase
     .from('services')
-    .update({ is_active: false })
+    .delete()
     .eq('id', serviceId);
 
   if (error) throw error;
 };
 
 // Operações de Agendamentos
-export const saveAppointment = async (appointment: Appointment, whatsappId: string) => {
+export const saveAppointment = async (appointment: Appointment, companyWhatsapp: string) => {
   try {
     const { data, error } = await supabase
       .from('appointments')
-      .upsert({
-        ...appointment,
-        company_id: whatsappId,
+      .insert({
+        company_whatsapp: companyWhatsapp,
+        client_whatsapp: appointment.clientWhatsapp,
+        client_name: appointment.clientName,
+        service_id: appointment.serviceId,
+        date: appointment.date,
+        time: appointment.time,
+        status: appointment.status || 'pending'
       });
 
     if (error) throw error;
@@ -270,12 +287,12 @@ export const saveAppointment = async (appointment: Appointment, whatsappId: stri
   }
 };
 
-export const getAppointments = async (whatsappId: string) => {
+export const getAppointments = async (companyWhatsapp: string) => {
   try {
     const { data, error } = await supabase
       .from('appointments')
       .select('*')
-      .eq('company_id', whatsappId);
+      .eq('company_whatsapp', companyWhatsapp);
 
     if (error) throw error;
     return data;
@@ -332,4 +349,93 @@ export const getBusinessHours = async (companyId: string) => {
 
   if (error) throw error;
   return data;
+};
+
+// Função para registrar ou atualizar interação entre cliente e empresa
+export const registerClientCompanyInteraction = async (
+  companyWhatsapp: string,
+  clientWhatsapp: string,
+  clientName?: string
+): Promise<boolean> => {
+  try {
+    const { data: existingInteraction, error: searchError } = await supabase
+      .from('client_company_interactions')
+      .select('*')
+      .eq('company_whatsapp', companyWhatsapp)
+      .eq('client_whatsapp', clientWhatsapp)
+      .single();
+
+    if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+      console.error('Erro ao buscar interação:', searchError);
+      return false;
+    }
+
+    if (existingInteraction) {
+      // Atualiza interação existente
+      const { error: updateError } = await supabase
+        .from('client_company_interactions')
+        .update({
+          last_contact_at: new Date().toISOString(),
+          total_interactions: existingInteraction.total_interactions + 1,
+          client_name: clientName || existingInteraction.client_name
+        })
+        .eq('id', existingInteraction.id);
+
+      if (updateError) {
+        console.error('Erro ao atualizar interação:', updateError);
+        return false;
+      }
+    } else {
+      // Cria nova interação
+      const { error: insertError } = await supabase
+        .from('client_company_interactions')
+        .insert({
+          company_whatsapp: companyWhatsapp,
+          client_whatsapp: clientWhatsapp,
+          client_name: clientName
+        });
+
+      if (insertError) {
+        console.error('Erro ao criar interação:', insertError);
+        return false;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Erro ao registrar interação:', error);
+    return false;
+  }
+};
+
+// Função para verificar se cliente já interagiu com a empresa
+export const checkClientCompanyHistory = async (
+  companyWhatsapp: string,
+  clientWhatsapp: string
+): Promise<{ isExistingClient: boolean; totalInteractions?: number; firstContact?: string }> => {
+  try {
+    const { data, error } = await supabase
+      .from('client_company_interactions')
+      .select('*')
+      .eq('company_whatsapp', companyWhatsapp)
+      .eq('client_whatsapp', clientWhatsapp)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') { // Não encontrado
+        return { isExistingClient: false };
+      }
+      console.error('Erro ao verificar histórico:', error);
+      throw error;
+    }
+
+    return {
+      isExistingClient: true,
+      totalInteractions: data.total_interactions,
+      firstContact: data.first_contact_at
+    };
+  } catch (error) {
+    console.error('Erro ao verificar histórico:', error);
+    return { isExistingClient: false };
+  }
 }; 

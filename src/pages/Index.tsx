@@ -35,14 +35,14 @@ export interface Service {
 export interface Appointment {
   id: string;
   clientName: string;
-  clientPhone: string;
-  service: Service;
-  professional: string;
+  clientWhatsapp: string;
+  serviceId: string;
   date: string;
   time: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled';
   createdAt?: string;
-  companyId?: string;
+  updatedAt?: string;
+  company_whatsapp: string;
 }
 
 interface CompanyInfo {
@@ -275,53 +275,44 @@ const Index = () => {
   };
 
   const handleSchedule = async () => {
-    if (!selectedService || !selectedDate || !selectedTime || !clientName || !clientPhone) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (selectedService && selectedDate && selectedTime) {
+      try {
+        const appointment: Appointment = {
+          id: Date.now().toString(),
+          clientName,
+          clientWhatsapp: clientPhone,
+          serviceId: selectedService.id,
+          date: selectedDate,
+          time: selectedTime,
+          status: 'pending',
+          company_whatsapp: companyId
+        };
 
-    try {
-      const appointment: Appointment = {
-        id: Date.now().toString(),
-        clientName,
-        clientPhone,
-        service: selectedService,
-        professional: companyInfo.professionalName || 'Profissional',
-        date: selectedDate,
-        time: selectedTime,
-        status: 'confirmed',
-        createdAt: new Date().toISOString(),
-        companyId
-      };
+        await saveAppointmentToSupabase(appointment);
+        
+        const updatedAppointments = [...appointments, appointment];
+        setAppointments(updatedAppointments);
 
-      await saveAppointment(appointment, companyId);
-      
-      const updatedAppointments = [...appointments, appointment];
-      setAppointments(updatedAppointments);
+        toast({
+          title: "Agendamento realizado!",
+          description: "Seu horário foi agendado com sucesso.",
+        });
 
-      toast({
-        title: "Agendamento realizado!",
-        description: "Seu horário foi agendado com sucesso.",
-      });
-
-      // Limpar formulário
-      setClientName('');
-      setClientPhone('');
-      setSelectedService(null);
-      setSelectedDate('');
-      setSelectedTime('');
-      setStep('welcome' as const);
-    } catch (error) {
-      console.error('Erro ao salvar agendamento:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível realizar o agendamento. Por favor, tente novamente.",
-        variant: "destructive"
-      });
+        // Limpar formulário
+        setClientName('');
+        setClientPhone('');
+        setSelectedService(null);
+        setSelectedDate('');
+        setSelectedTime('');
+        setStep('welcome' as const);
+      } catch (error) {
+        console.error('Erro ao salvar agendamento:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível realizar o agendamento. Por favor, tente novamente.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -470,7 +461,8 @@ const Index = () => {
 
       {step === 'myappointments' && (
         <MyAppointments
-          appointments={appointments.filter(apt => apt.clientPhone === clientPhone)}
+          appointments={appointments.filter(apt => apt.clientWhatsapp === clientPhone)}
+          services={services}
           onBack={() => setStep('welcome')}
           onCancelAppointment={handleCancel}
           onNewAppointment={() => setStep('service')}

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Building, Eye, EyeOff } from "lucide-react";
+import { saveCompanyInfo } from "@/utils/supabaseOperations";
 
 interface AdminUser {
   id: string;
@@ -78,15 +79,51 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
     return `${cleanName}_${timestamp}`;
   };
 
-  const addUser = () => {
-    if (!newUser.username || !newUser.password || !newUser.companyName) {
+  const formatWhatsApp = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Se não tiver números, retorna vazio
+    if (!numbers) return '';
+    
+    // Adiciona parênteses no DDD
+    if (numbers.length <= 2) return `(${numbers}`;
+    
+    // Fecha parênteses após DDD
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)})${numbers.slice(2)}`;
+    
+    // Adiciona hífen
+    return `(${numbers.slice(0, 2)})${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const unformatWhatsApp = (value: string) => {
+    // Remove tudo que não é número e adiciona 55 na frente
+    return '55' + value.replace(/\D/g, '');
+  };
+
+  const addUser = async () => {
+    if (!newUser.username || !newUser.password || !newUser.companyName || !newUser.whatsapp) {
       toast({
         title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
+        description: "Preencha todos os campos obrigatórios (nome da empresa, usuário, senha e WhatsApp).",
         variant: "destructive"
       });
       return;
     }
+
+    // Validar formato do WhatsApp (11 dígitos - DDD + número)
+    const phoneNumbers = newUser.whatsapp.replace(/\D/g, '');
+    if (phoneNumbers.length !== 11) {
+      toast({
+        title: "Erro",
+        description: "O WhatsApp deve conter exatamente 11 dígitos (DDD + 9 dígitos).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Adiciona 55 na frente para formar os 13 dígitos
+    const whatsappNumbers = unformatWhatsApp(newUser.whatsapp);
 
     // Verificar se username já existe
     if (users.some(user => user.username === newUser.username)) {
@@ -98,81 +135,110 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
       return;
     }
 
-    const companyId = generateCompanyId(newUser.companyName);
+    // Verificar se WhatsApp já existe (comparando sem formatação)
+    if (users.some(user => unformatWhatsApp(user.whatsapp || '') === whatsappNumbers)) {
+      toast({
+        title: "Erro",
+        description: "Este número de WhatsApp já está cadastrado.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    const user: AdminUser = {
-      id: Date.now().toString(),
-      username: newUser.username,
-      password: newUser.password,
-      role: 'client',
-      companyName: newUser.companyName,
-      companyId: companyId,
-      address: newUser.address,
-      cpfCnpj: newUser.cpfCnpj,
-      whatsapp: newUser.whatsapp,
-      socialMedia: newUser.socialMedia,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      // Salvar empresa no Supabase
+      const companyInfo = {
+        whatsapp: whatsappNumbers,
+        name: newUser.companyName,
+        address: newUser.address,
+        phone: newUser.whatsapp,
+        professional_name: '',
+        social_media: newUser.socialMedia
+      };
 
-    const updatedUsers = [...users, user];
-    setUsers(updatedUsers);
-    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
+      await saveCompanyInfo(companyInfo);
 
-    // Criar dados iniciais da empresa
-    const companyInfo = {
-      name: newUser.companyName,
-      address: newUser.address,
-      phone: newUser.whatsapp,
-      professionalName: '',
-      cpfCnpj: newUser.cpfCnpj,
-      whatsapp: newUser.whatsapp,
-      socialMedia: newUser.socialMedia,
-      companyId: companyId
-    };
+      // Criar usuário local
+      const user: AdminUser = {
+        id: Date.now().toString(),
+        username: newUser.username,
+        password: newUser.password,
+        role: 'client',
+        companyName: newUser.companyName,
+        companyId: whatsappNumbers,
+        address: newUser.address,
+        cpfCnpj: newUser.cpfCnpj,
+        whatsapp: newUser.whatsapp,
+        socialMedia: newUser.socialMedia,
+        createdAt: new Date().toISOString()
+      };
 
-    localStorage.setItem(`${companyId}_companyInfo`, JSON.stringify(companyInfo));
+      const updatedUsers = [...users, user];
+      setUsers(updatedUsers);
+      localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
 
-    toast({
-      title: "Empresa criada!",
-      description: `${newUser.companyName} foi criada com sucesso. ID: ${companyId}`,
-    });
+      toast({
+        title: "Empresa criada!",
+        description: `${newUser.companyName} foi criada com sucesso. WhatsApp: ${newUser.whatsapp}`,
+      });
 
-    resetForm();
-    setIsDialogOpen(false);
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao criar empresa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar a empresa. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const updateUser = () => {
-    if (!editingUser) return;
+    if (!editingUser || !editingUser.whatsapp) return;
+
+    // Criar uma cópia do usuário editado mantendo o WhatsApp original
+    const userToUpdate = {
+      ...editingUser,
+      whatsapp: editingUser.whatsapp, // Mantém o WhatsApp original
+      companyId: editingUser.companyId // Mantém o Company ID original
+    };
 
     const updatedUsers = users.map(user => 
-      user.id === editingUser.id ? editingUser : user
+      user.id === editingUser.id ? userToUpdate : user
     );
     setUsers(updatedUsers);
     localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
 
     // Atualizar dados da empresa também
     const companyInfo = {
+      whatsapp: editingUser.whatsapp, // WhatsApp já verificado como não undefined
       name: editingUser.companyName || '',
       address: editingUser.address || '',
-      phone: editingUser.whatsapp || '',
-      professionalName: '',
-      cpfCnpj: editingUser.cpfCnpj || '',
-      whatsapp: editingUser.whatsapp || '',
-      socialMedia: editingUser.socialMedia || '',
-      companyId: editingUser.companyId || ''
+      phone: editingUser.whatsapp, // WhatsApp já verificado como não undefined
+      professional_name: '',
+      social_media: editingUser.socialMedia || ''
     };
 
-    if (editingUser.companyId) {
-      localStorage.setItem(`${editingUser.companyId}_companyInfo`, JSON.stringify(companyInfo));
+    try {
+      // Atualizar no Supabase
+      saveCompanyInfo(companyInfo);
+
+      toast({
+        title: "Empresa atualizada!",
+        description: `${editingUser.companyName} foi atualizada com sucesso.`,
+      });
+
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao atualizar empresa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a empresa. Por favor, tente novamente.",
+        variant: "destructive"
+      });
     }
-
-    toast({
-      title: "Empresa atualizada!",
-      description: `${editingUser.companyName} foi atualizada com sucesso.`,
-    });
-
-    resetForm();
-    setIsDialogOpen(false);
   };
 
   const deleteUser = (userId: string) => {
@@ -353,10 +419,13 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
 
             {editingUser && editingUser.companyId && (
               <div>
-                <Label className="font-bold">Company ID * (não pode ser alterado)</Label>
+                <Label className="font-bold">Company ID/WhatsApp * (não pode ser alterado)</Label>
                 <div className="bg-gray-50 border border-gray-300 p-3 rounded font-mono font-bold text-gray-800 mt-2">
-                  {editingUser.companyId}
+                  {editingUser.whatsapp}
                 </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Este é o identificador único da empresa e seu número de contato WhatsApp. Para alterar, exclua a empresa e cadastre novamente.
+                </p>
               </div>
             )}
 
@@ -373,18 +442,24 @@ const UserManagement = ({ currentUser }: UserManagementProps) => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                value={editingUser ? editingUser.whatsapp || '' : newUser.whatsapp}
-                onChange={(e) => editingUser 
-                  ? setEditingUser({...editingUser, whatsapp: e.target.value})
-                  : setNewUser({...newUser, whatsapp: e.target.value})
-                }
-                placeholder="(11) 99999-9999"
-              />
-            </div>
+            {!editingUser && (
+              <div>
+                <Label htmlFor="whatsapp">WhatsApp *</Label>
+                <Input
+                  id="whatsapp"
+                  value={newUser.whatsapp}
+                  onChange={(e) => {
+                    const formattedValue = formatWhatsApp(e.target.value);
+                    setNewUser({...newUser, whatsapp: formattedValue});
+                  }}
+                  placeholder="(27)99999-9999"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Formato: (DDD)99999-9999 - O código do país (55) será adicionado automaticamente.
+                  Este número não poderá ser alterado após a criação da empresa.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="address">Endereço</Label>

@@ -23,14 +23,13 @@ import {
 } from "@/utils/supabaseOperations";
 
 interface CompanyInfo {
+  whatsapp: string; // ID da empresa
   name: string;
   address: string;
   phone: string;
   professionalName: string;
   cpfCnpj?: string;
-  whatsapp?: string;
   socialMedia?: string;
-  companyId?: string;
 }
 
 interface AdminUser {
@@ -47,12 +46,19 @@ interface AdminUser {
   createdAt: string;
 }
 
+interface DayStats {
+  total: number;
+  revenue: number;
+  nextAppointment: Appointment | undefined;
+}
+
 const Admin = () => {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    whatsapp: '',
     name: '',
     address: '',
     phone: '',
@@ -91,18 +97,22 @@ const Admin = () => {
     try {
       if (currentUser) {
         // Carregar agendamentos
-        const appointments = await getAppointments(currentUser.companyId || '');
-        setAppointments(appointments);
+        const appointmentsData = await getAppointments(currentUser.companyId || '');
+        if (appointmentsData) {
+          setAppointments(appointmentsData);
+        } else {
+          setAppointments([]);
+        }
 
         // Carregar serviços
-        const services = await getServices(currentUser.companyId || '');
-        if (services && services.length > 0) {
-          setServices(services);
+        const servicesData = await getServices(currentUser.companyId || '');
+        if (servicesData && servicesData.length > 0) {
+          setServices(servicesData);
         } else {
           // Serviços padrão apenas se não houver salvos
           const defaultServices: Service[] = [
-            { id: '1', name: 'Serviço Básico', price: 50, duration: 30 },
-            { id: '2', name: 'Serviço Premium', price: 100, duration: 60 }
+            { id: crypto.randomUUID(), name: 'Serviço Básico', price: 50, duration: 30 },
+            { id: crypto.randomUUID(), name: 'Serviço Premium', price: 100, duration: 60 }
           ];
           setServices(defaultServices);
           // Salvar serviços padrão no Supabase
@@ -116,14 +126,13 @@ const Admin = () => {
           const companyData = await getCompanyInfo(currentUser.companyId || '');
           if (companyData) {
             setCompanyInfo({
+              whatsapp: companyData.whatsapp,
               name: companyData.name,
               address: companyData.address,
               phone: companyData.phone,
               professionalName: companyData.professional_name,
               cpfCnpj: companyData.cpf_cnpj,
-              whatsapp: companyData.whatsapp,
               socialMedia: companyData.social_media,
-              companyId: companyData.company_id
             });
           }
         }
@@ -141,12 +150,12 @@ const Admin = () => {
   const saveCompanyInfoHandler = async () => {
     try {
       await saveCompanyInfo({
-        company_id: currentUser?.companyId || '',
+        whatsapp: companyInfo.whatsapp, // Mantém o mesmo WhatsApp, não pode ser alterado
         name: companyInfo.name,
         address: companyInfo.address,
-        phone: companyInfo.phone,
-        whatsapp: companyInfo.whatsapp,
-        professional_name: companyInfo.professionalName
+        phone: companyInfo.whatsapp, // Usa o WhatsApp como telefone
+        professional_name: companyInfo.professionalName,
+        social_media: companyInfo.socialMedia
       });
       
       toast({
@@ -184,7 +193,7 @@ const Admin = () => {
 
     try {
       const service: Service = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         name: newService.name,
         price: newService.price,
         duration: newService.duration
@@ -268,10 +277,13 @@ const Admin = () => {
     return appointments.filter(apt => apt.date === date && apt.status === 'confirmed');
   };
 
-  const getTodayStats = () => {
+  const getTodayStats = (): DayStats => {
     const today = new Date().toISOString().split('T')[0];
     const todayAppointments = getAppointmentsByDate(today);
-    const revenue = todayAppointments.reduce((sum, apt) => sum + apt.service.price, 0);
+    const revenue = todayAppointments.reduce((sum: number, apt: Appointment) => {
+      const service = services.find(s => s.id === apt.serviceId);
+      return sum + (service?.price || 0);
+    }, 0);
     
     return {
       total: todayAppointments.length,
@@ -390,6 +402,27 @@ const Admin = () => {
   const dayAppointments = selectedDate ? getAppointmentsByDate(selectedDate.toISOString().split('T')[0]) : [];
   const todayAppointments = getAppointmentsByDate(new Date().toISOString().split('T')[0]);
 
+  const renderAppointment = (apt: Appointment) => {
+    const service = services.find(s => s.id === apt.serviceId);
+    return (
+      <div key={apt.id} className="p-4 border rounded-lg mb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold">{apt.clientName}</h3>
+            <p className="text-sm text-gray-600">{service?.name}</p>
+            <p className="text-sm text-gray-600">
+              {formatDate(apt.date)} às {apt.time}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold">R$ {service?.price.toFixed(2)}</p>
+            <p className="text-sm text-gray-600">{apt.status}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto">
@@ -502,12 +535,12 @@ const Admin = () => {
             <CardContent className="space-y-4">
               {/* Company ID em destaque suave */}
               <div>
-                <Label htmlFor="company-id" className="font-bold">Company ID * (não pode ser alterado)</Label>
+                <Label htmlFor="company-id" className="font-bold">Company ID/WhatsApp * (não pode ser alterado)</Label>
                 <div className="bg-gray-50 border border-gray-300 p-3 rounded font-mono font-bold text-gray-800 mt-2">
-                  {currentUser.companyId}
+                  {companyInfo.whatsapp}
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
-                  Este é o identificador único da sua empresa no sistema
+                  Este é o identificador único da sua empresa no sistema e seu número de contato WhatsApp
                 </p>
               </div>
 
@@ -548,26 +581,6 @@ const Admin = () => {
                   value={companyInfo.address}
                   onChange={(e) => setCompanyInfo({...companyInfo, address: e.target.value})}
                   placeholder="Ex: Rua das Flores, 123 - Centro"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="company-phone">Telefone</Label>
-                <Input
-                  id="company-phone"
-                  value={companyInfo.phone}
-                  onChange={(e) => setCompanyInfo({...companyInfo, phone: e.target.value})}
-                  placeholder="Ex: (11) 99999-9999"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input
-                  id="whatsapp"
-                  value={companyInfo.whatsapp || ''}
-                  onChange={(e) => setCompanyInfo({...companyInfo, whatsapp: e.target.value})}
-                  placeholder="Ex: (11) 99999-9999"
                 />
               </div>
 
@@ -675,53 +688,9 @@ const Admin = () => {
           </>
         )}
 
-        {view === 'appointments' && currentUser.role === 'client' && (
-          <div>
-            <div className="mb-6">
-              <Label htmlFor="date-picker">Selecionar Data:</Label>
-              <Input
-                id="date-picker"
-                type="date"
-                value={selectedDate?.toISOString().split('T')[0] || ''}
-                onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))}
-                className="max-w-xs"
-              />
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{selectedDate ? formatDate(selectedDate.toISOString().split('T')[0]) : 'Selecione uma data'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {dayAppointments.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhum agendamento para esta data.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {dayAppointments
-                      .sort((a, b) => a.time.localeCompare(b.time))
-                      .map((appointment) => (
-                        <div key={appointment.id} className="flex justify-between items-center p-4 border rounded-lg">
-                          <div>
-                            <h3 className="font-semibold">{appointment.clientName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {appointment.service.name} - {appointment.time}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Tel: {appointment.clientPhone}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold">R$ {appointment.service.price.toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {appointment.service.duration}min
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {view === 'appointments' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {appointments.map(apt => renderAppointment(apt))}
           </div>
         )}
 

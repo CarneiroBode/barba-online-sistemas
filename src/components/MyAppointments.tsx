@@ -1,180 +1,139 @@
-
-import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Appointment } from "@/pages/Index";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Appointment, Service } from "@/pages/Index";
 
 interface MyAppointmentsProps {
   appointments: Appointment[];
+  services: Service[];
   onBack: () => void;
   onCancelAppointment: (appointmentId: string) => void;
   onNewAppointment: () => void;
 }
 
-const MyAppointments = ({ appointments, onBack, onCancelAppointment, onNewAppointment }: MyAppointmentsProps) => {
-  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; appointmentId: string | null }>({ 
-    open: false, 
-    appointmentId: null 
-  });
-
+const MyAppointments = ({
+  appointments,
+  services,
+  onBack,
+  onCancelAppointment,
+  onNewAppointment
+}: MyAppointmentsProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00');
     const day = date.getDate();
-    const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     const month = monthNames[date.getMonth()];
     const year = date.getFullYear();
     
-    const dayNames = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
     const dayName = dayNames[date.getDay()];
     
-    return `${dayName}, ${day} ${month} ${year}`;
+    return `${dayName}, ${day} de ${month} de ${year}`;
   };
 
-  const canCancelAppointment = (appointment: Appointment) => {
-    const now = new Date();
-    const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}:00`);
-    const diffInHours = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    console.log('Can cancel check:', { diffInHours, status: appointment.status, canCancel: diffInHours >= 2 && appointment.status === 'confirmed' });
-    return diffInHours >= 2 && appointment.status === 'confirmed';
+  const getServiceDetails = (serviceId: string) => {
+    return services.find(s => s.id === serviceId);
   };
 
-  const confirmedAppointments = appointments.filter(apt => apt.status === 'confirmed');
+  const sortedAppointments = [...appointments].sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}`);
+    const dateB = new Date(`${b.date}T${b.time}`);
+    return dateA.getTime() - dateB.getTime();
+  });
 
-  const handleCancelClick = (appointmentId: string) => {
-    setCancelDialog({ open: true, appointmentId });
-  };
+  const upcomingAppointments = sortedAppointments.filter(apt => {
+    const aptDateTime = new Date(`${apt.date}T${apt.time}`);
+    return aptDateTime > new Date() && apt.status !== 'cancelled';
+  });
 
-  const handleConfirmCancel = () => {
-    if (cancelDialog.appointmentId) {
-      onCancelAppointment(cancelDialog.appointmentId);
-    }
-    setCancelDialog({ open: false, appointmentId: null });
-  };
+  const pastAppointments = sortedAppointments.filter(apt => {
+    const aptDateTime = new Date(`${apt.date}T${apt.time}`);
+    return aptDateTime <= new Date() || apt.status === 'cancelled';
+  });
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center mb-6 pt-4">
-          <Button 
-            onClick={onBack}
-            variant="ghost" 
-            size="icon" 
-            className="text-white hover:bg-gray-700"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
-        </div>
+      <div className="max-w-md mx-auto pt-20">
+        <h1 className="text-2xl font-bold mb-8 text-center">Meus Agendamentos</h1>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">Meus</h1>
-          <h1 className="text-4xl font-bold mb-8">Agendamentos</h1>
-        </div>
-
-        {confirmedAppointments.length === 0 ? (
-          <div className="text-center py-12">            
-            <h2 className="text-xl font-semibold mb-4">Você não possui agendamentos em aberto.</h2>
-            <p className="text-gray-400 mb-8">Realize um agendamento e ele aparecerá aqui!</p>
-            
-            <Button 
-              onClick={onNewAppointment}
-              className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
-            >
-              Novo Agendamento
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {confirmedAppointments.map((appointment) => {
-              const canCancel = canCancelAppointment(appointment);
-              return (
-                <Card key={appointment.id} className="bg-gray-700 border-gray-600">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
+        {upcomingAppointments.length > 0 && (
+          <Card className="bg-gray-800 border-gray-700 mb-6">
+            <CardHeader>
+              <CardTitle className="text-white">Próximos Agendamentos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {upcomingAppointments.map(apt => {
+                const service = getServiceDetails(apt.serviceId);
+                return (
+                  <div key={apt.id} className="p-4 border border-gray-700 rounded-lg">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-white text-sm">{formatDate(appointment.date)} às {appointment.time}</p>
-                        <h3 className="text-white text-xl font-bold mt-2">{appointment.clientName}</h3>
-                        <p className="text-gray-300 text-lg">{appointment.service.name.toUpperCase()}</p>
-                        <p className="text-gray-400">PROFISSIONAL: {appointment.professional.toUpperCase()}</p>
+                        <h3 className="font-semibold">{service?.name}</h3>
+                        <p className="text-sm text-gray-400">{formatDate(apt.date)}</p>
+                        <p className="text-sm text-gray-400">às {apt.time}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white text-xl font-bold">R$ {appointment.service.price.toFixed(2)}</p>
-                        {canCancel && (
-                          <Button
-                            onClick={() => handleCancelClick(appointment.id)}
-                            variant="destructive"
-                            size="sm"
-                            className="mt-2"
-                          >
-                            CANCELAR
-                          </Button>
-                        )}
+                        <p className="font-semibold">R$ {service?.price.toFixed(2)}</p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => onCancelAppointment(apt.id)}
+                          className="mt-2"
+                        >
+                          Cancelar
+                        </Button>
                       </div>
                     </div>
-                    
-                    {canCancel && (
-                      <div className="mt-4 p-3 bg-gray-600 rounded-lg">
-                        <p className="text-sm text-gray-300">
-                          Este estabelecimento permite cancelamentos com no mínimo 2h de antecedência.
-                        </p>
-                      </div>
-                    )}
-                    
-                    {!canCancel && (
-                      <div className="mt-4 p-3 bg-red-900/20 rounded-lg">
-                        <p className="text-sm text-red-300">
-                          Cancelamento não permitido (menos de 2h de antecedência ou agendamento já passou).
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            
-            <Button 
-              onClick={onNewAppointment}
-              className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg mt-6"
-            >
-              Novo Agendamento
-            </Button>
-          </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         )}
-      </div>
 
-      <Dialog open={cancelDialog.open} onOpenChange={(open) => setCancelDialog({ open, appointmentId: null })}>
-        <DialogContent className="bg-white text-black">
-          <DialogHeader>
-            <DialogTitle>Deseja cancelar este horário?</DialogTitle>
-            <DialogDescription>
-              Ao confirmar, este horário poderá ser preenchido por outro agendamento.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setCancelDialog({ open: false, appointmentId: null })}
-              className="flex-1"
-            >
-              NÃO
-            </Button>
-            <Button
-              onClick={handleConfirmCancel}
-              className="flex-1 bg-amber-700 hover:bg-amber-600"
-            >
-              SIM
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {pastAppointments.length > 0 && (
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white">Histórico</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pastAppointments.map(apt => {
+                const service = getServiceDetails(apt.serviceId);
+                return (
+                  <div key={apt.id} className="p-4 border border-gray-700 rounded-lg opacity-75">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{service?.name}</h3>
+                        <p className="text-sm text-gray-400">{formatDate(apt.date)}</p>
+                        <p className="text-sm text-gray-400">às {apt.time}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">R$ {service?.price.toFixed(2)}</p>
+                        <p className="text-sm text-gray-400">{apt.status}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="mt-8 space-y-4">
+          <Button
+            onClick={onNewAppointment}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            Novo Agendamento
+          </Button>
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
+          >
+            Voltar
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

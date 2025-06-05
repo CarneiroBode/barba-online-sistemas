@@ -1,6 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Service } from "@/pages/Index";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 interface CompanyInfo {
   name: string;
@@ -21,94 +22,78 @@ interface AppointmentConfirmationProps {
   onMyAppointments: () => void;
 }
 
-const AppointmentConfirmation = ({ 
-  clientName, 
-  service, 
-  date, 
-  time, 
+const AppointmentConfirmation = ({
+  clientName,
+  service,
+  date,
+  time,
   professional,
   companyInfo,
   onConfirm,
   onNewAppointment,
-  onMyAppointments 
+  onMyAppointments
 }: AppointmentConfirmationProps) => {
-  
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    const day = date.getDate();
-    const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-    const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
-    
-    const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-    const dayName = dayNames[date.getDay()];
-    
-    return `${dayName}, ${day} de ${month} de ${year}`;
-  };
-
-  const handleSaveToCalendar = () => {
-    const startDate = new Date(`${date}T${time}:00`);
-    const endDate = new Date(startDate.getTime() + service.duration * 60000);
-    
-    const title = `${service.name} - ${professional}`;
-    const details = `Agendamento na ${companyInfo.name}\nServiço: ${service.name}\nProfissional: ${professional}\nValor: R$ ${service.price.toFixed(2)}`;
-    const location = companyInfo.address || 'Local a confirmar';
-    
-    const startStr = startDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const endStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
-    
-    window.open(url, '_blank');
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="max-w-md mx-auto pt-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-6">{companyInfo.name}</h1>
-          
-          <div className="bg-gray-600 rounded-xl p-1 mb-6 inline-block">
-            <span className="text-white px-3 py-1">Perfeito....</span>
-          </div>
+      <div className="max-w-md mx-auto pt-20">
+        <h1 className="text-2xl font-bold mb-8 text-center">{companyInfo.name}</h1>
+        
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Confirmar Agendamento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-gray-400">Cliente</Label>
+              <p className="text-white">{clientName}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Serviço</Label>
+              <p className="text-white">{service.name}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Profissional</Label>
+              <p className="text-white">{professional}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Data</Label>
+              <p className="text-white">{new Date(date).toLocaleDateString('pt-BR')}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Horário</Label>
+              <p className="text-white">{time}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Valor</Label>
+              <p className="text-white">R$ {service.price.toFixed(2)}</p>
+            </div>
+            <div>
+              <Label className="text-gray-400">Duração</Label>
+              <p className="text-white">{service.duration} minutos</p>
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-amber-700 rounded-2xl p-6 mb-6">
-            <p className="text-lg">
-              Agendamento realizado: {service.name} - (R$ {service.price.toFixed(2)}), com {professional} no(a) {formatDate(date)} às {time}. {companyInfo.address && `O local é ${companyInfo.address}.`}
-            </p>
-          </div>
-
-          <div className="bg-amber-700 rounded-2xl p-6 mb-8">
-            <p className="text-lg">Muito obrigado, até mais!</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
+        <div className="mt-8 space-y-4">
           <Button 
-            onClick={() => {
-              onConfirm();
-              onMyAppointments();
-            }}
-            className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
+            onClick={onConfirm}
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
-            Meus agendamentos
+            Confirmar Agendamento
           </Button>
-
           <Button 
-            onClick={() => {
-              onConfirm();
-              onNewAppointment();
-            }}
-            className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
+            onClick={onNewAppointment}
+            variant="outline"
+            className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
           >
-            Novo agendamento
+            Novo Agendamento
           </Button>
-
           <Button 
-            onClick={handleSaveToCalendar}
-            className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
+            onClick={onMyAppointments}
+            variant="outline"
+            className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
           >
-            Salvar em minha agenda local
+            Meus Agendamentos
           </Button>
         </div>
       </div>
