@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use valores padrão para desenvolvimento se as variáveis não estiverem configuradas
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://exemplo.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4ZW1wbG8iLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MjU0NjQwMCwiZXhwIjoxOTU4MTIyNDAwfQ.exemplo';
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('Variáveis de ambiente do Supabase não configuradas. Por favor, crie um arquivo .env na raiz do projeto com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
@@ -142,4 +143,4 @@ export const generateSecureLink = (phone: string, securityCode: string, companyI
     return `${baseUrl}/${companyId}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
   }
   return `${baseUrl}?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(securityCode)}`;
-}; 
+};
