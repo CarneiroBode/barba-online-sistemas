@@ -1,12 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Use valores padrão para desenvolvimento se as variáveis não estiverem configuradas
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://exemplo.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4ZW1wbG8iLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MjU0NjQwMCwiZXhwIjoxOTU4MTIyNDAwfQ.exemplo';
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Variáveis de ambiente do Supabase não configuradas. Por favor, crie um arquivo .env na raiz do projeto com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
-}
+// Usar as configurações reais do Supabase
+const supabaseUrl = 'https://jhdtarrgtlyxwqbexhcg.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZHRhcnJndGx5eHdxYmV4aGNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNTk2NjcsImV4cCI6MjA2MjYzNTY2N30._JeB0QOXlK8YqdpUeEYDxNuS5YuRckmwi5QURVijnlA';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 

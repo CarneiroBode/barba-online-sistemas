@@ -1,5 +1,4 @@
-
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Service, Appointment } from '@/pages/Index';
 
 // Interfaces
@@ -158,7 +157,7 @@ export const saveCompanyInfo = async (companyInfo: CompanyInfo) => {
         name: companyInfo.name,
         address: companyInfo.address,
         phone: companyInfo.phone,
-        professional_name: companyInfo.professional_name || companyInfo.professionalName, // Handle both field names
+        professional_name: companyInfo.professional_name || companyInfo.professionalName,
         social_media: companyInfo.social_media || companyInfo.socialMedia,
         is_active: true
       })
@@ -185,7 +184,7 @@ export const getCompanyInfo = async (whatsappId: string) => {
     const { data, error } = await supabase
       .from('companies')
       .select('*')
-      .eq('whatsapp', whatsappId.replace(/\D/g, '')) // Remove formatação
+      .eq('whatsapp', whatsappId.replace(/\D/g, ''))
       .single();
 
     if (error) {
@@ -373,13 +372,12 @@ export const registerClientCompanyInteraction = async (
       .eq('client_whatsapp', clientWhatsapp)
       .single();
 
-    if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+    if (searchError && searchError.code !== 'PGRST116') {
       console.error('Erro ao buscar interação:', searchError);
       return false;
     }
 
     if (existingInteraction) {
-      // Atualiza interação existente
       const { error: updateError } = await supabase
         .from('client_company_interactions')
         .update({
@@ -394,7 +392,6 @@ export const registerClientCompanyInteraction = async (
         return false;
       }
     } else {
-      // Cria nova interação
       const { error: insertError } = await supabase
         .from('client_company_interactions')
         .insert({
@@ -430,7 +427,7 @@ export const checkClientCompanyHistory = async (
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') { // Não encontrado
+      if (error.code === 'PGRST116') {
         return { isExistingClient: false };
       }
       console.error('Erro ao verificar histórico:', error);
@@ -446,4 +443,4 @@ export const checkClientCompanyHistory = async (
     console.error('Erro ao verificar histórico:', error);
     return { isExistingClient: false };
   }
-}; 
+};
