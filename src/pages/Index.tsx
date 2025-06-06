@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams, useParams, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,10 +79,11 @@ const Index = () => {
     socialMedia: ''
   });
 
-  // Dados dinâmicos - carregados do localStorage
+  // Dados dinâmicos - carregados do Supabase
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Extrair company_id da URL (agora usando whatsapp)
   const extractCompanyId = (): string => {
@@ -89,121 +91,115 @@ const Index = () => {
     const pathSegments = path.split('/').filter(segment => segment);
     const companyId = pathSegments[0] || '';
     
+    console.log('Extracting company ID from path:', path, 'Result:', companyId);
+    
     // Verifica se é a rota de admin
     if (companyId === 'admin') {
       return companyId;
     }
 
-    // Valida se o ID é um número de WhatsApp válido (13 dígitos)
-    const whatsappRegex = /^\d{13}$/;
-    if (!whatsappRegex.test(companyId)) {
-      console.error('ID da empresa inválido: deve ser um número de WhatsApp com 13 dígitos');
+    // Se não há ID na URL, pode ser acesso direto
+    if (!companyId) {
+      console.log('Acesso direto à raiz');
       return '';
     }
 
-    return companyId;
-  };
-
-  // Verificar se a empresa existe
-  const validateCompany = async (whatsappId: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('whatsapp')
-        .eq('whatsapp', whatsappId)
-        .single();
-
-      if (error) {
-        console.error('Erro ao validar empresa:', error);
-        return false;
-      }
-
-      return !!data;
-    } catch (error) {
-      console.error('Erro ao validar empresa:', error);
-      return false;
+    // Validar se o ID parece um número de WhatsApp (aceitar vários formatos)
+    const cleanId = companyId.replace(/\D/g, '');
+    if (cleanId.length < 10 || cleanId.length > 15) {
+      console.error('ID da empresa inválido: deve ser um número de WhatsApp válido');
+      return '';
     }
+
+    return cleanId;
   };
 
   useEffect(() => {
     const initializeApp = async () => {
-      const companyWhatsapp = extractCompanyId(); // Agora retorna o whatsapp da empresa
+      console.log('Inicializando aplicação...');
+      setIsLoading(true);
+      
+      const companyWhatsapp = extractCompanyId();
       const clientWhatsapp = searchParams.get('phone') || '';
       const code = searchParams.get('code') || '';
 
+      console.log('Parâmetros:', { companyWhatsapp, clientWhatsapp, code });
+
       // Rota de admin
       if (companyWhatsapp === 'admin') {
-        // Lógica para admin
+        console.log('Rota de admin detectada');
+        setIsLoading(false);
         return;
       }
 
-      // Validação do formato dos números WhatsApp
-      const whatsappRegex = /^\d{13}$/;
-      const isValidCompanyWhatsapp = whatsappRegex.test(companyWhatsapp);
-      const isValidClientWhatsapp = whatsappRegex.test(clientWhatsapp);
-
-      // Validação da URL completa
-      if (!isValidCompanyWhatsapp || !isValidClientWhatsapp || !code) {
+      // Se não há parâmetros de empresa, mostrar tela de acesso restrito
+      if (!companyWhatsapp) {
+        console.log('Sem ID de empresa, mostrando acesso restrito');
         setIsAuthenticated(false);
-        toast({
-          title: "URL Inválida",
-          description: "Por favor, use o link enviado via WhatsApp para acessar o sistema de agendamento.",
-          variant: "destructive"
-        });
+        setIsLoading(false);
         return;
       }
 
-      try {
-        // Validar acesso
-        const isValid = await validateUserAccess(companyWhatsapp, clientWhatsapp, code);
-        if (!isValid) {
+      setCompanyId(companyWhatsapp);
+
+      // Se há parâmetros de autenticação, tentar validar
+      if (clientWhatsapp && code) {
+        try {
+          console.log('Validando acesso do usuário...');
+          const isValid = await validateUserAccess(companyWhatsapp, clientWhatsapp, code);
+          
+          if (isValid) {
+            console.log('Acesso válido, autenticando usuário');
+            setClientPhone(clientWhatsapp);
+            setSecurityCode(code);
+            setIsAuthenticated(true);
+            setStep('service');
+          } else {
+            console.log('Acesso inválido');
+            setIsAuthenticated(false);
+            toast({
+              title: "Acesso Negado",
+              description: "Link inválido ou expirado. Por favor, solicite um novo link.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('Erro na autenticação:', error);
           setIsAuthenticated(false);
           toast({
-            title: "Acesso Negado",
-            description: "Link inválido ou expirado. Por favor, solicite um novo link.",
+            title: "Erro",
+            description: "Ocorreu um erro ao validar seu acesso. Por favor, tente novamente.",
             variant: "destructive"
           });
-          return;
         }
-
-        // Se chegou aqui, a autenticação foi bem sucedida
-        setClientPhone(clientWhatsapp);
-        setSecurityCode(code);
-        setCompanyId(companyWhatsapp);
-        setIsAuthenticated(true);
-        setStep('service');
-
-        // Carregar dados da empresa
-        await loadInitialData();
-
-      } catch (error) {
-        console.error('Erro na autenticação:', error);
+      } else {
+        console.log('Sem parâmetros de autenticação, mostrando acesso restrito');
         setIsAuthenticated(false);
-        toast({
-          title: "Erro",
-          description: "Ocorreu um erro ao validar seu acesso. Por favor, tente novamente.",
-          variant: "destructive"
-        });
       }
+
+      // Carregar dados da empresa independentemente da autenticação
+      await loadInitialData(companyWhatsapp);
+      setIsLoading(false);
     };
 
     initializeApp();
   }, [searchParams, location.pathname, toast]);
 
-  useEffect(() => {
-    loadInitialData();
-  }, [companyId]);
-
-  const loadInitialData = async () => {
+  const loadInitialData = async (companyWhatsapp?: string) => {
     try {
-      if (!companyId) {
-        setError("ID da empresa não fornecido");
+      const currentCompanyId = companyWhatsapp || companyId;
+      
+      if (!currentCompanyId) {
+        console.log('Sem ID da empresa para carregar dados');
         return;
       }
 
+      console.log('Carregando dados da empresa:', currentCompanyId);
+
       // Carregar informações da empresa
-      const companyData = await getCompanyInfo(companyId);
+      const companyData = await getCompanyInfo(currentCompanyId);
       if (companyData) {
+        console.log('Dados da empresa carregados:', companyData);
         setCompanyInfo({
           name: companyData.name,
           address: companyData.address,
@@ -213,20 +209,28 @@ const Index = () => {
           socialMedia: companyData.social_media
         });
       } else {
+        console.log('Empresa não encontrada');
         setError("Empresa não encontrada");
         return;
       }
 
       // Carregar serviços
-      const servicesData = await getServices(companyId);
+      const servicesData = await getServices(currentCompanyId);
       if (servicesData && servicesData.length > 0) {
+        console.log('Serviços carregados:', servicesData.length);
         setServices(servicesData);
+      } else {
+        console.log('Nenhum serviço encontrado');
+        setServices([]);
       }
 
-      // Carregar agendamentos
-      const appointmentsData = await getAppointments(companyId);
-      if (appointmentsData) {
-        setAppointments(appointmentsData);
+      // Carregar agendamentos se autenticado
+      if (isAuthenticated) {
+        const appointmentsData = await getAppointments(currentCompanyId);
+        if (appointmentsData) {
+          console.log('Agendamentos carregados:', appointmentsData.length);
+          setAppointments(appointmentsData);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -299,12 +303,10 @@ const Index = () => {
         });
 
         // Limpar formulário
-        setClientName('');
-        setClientPhone('');
         setSelectedService(null);
         setSelectedDate('');
         setSelectedTime('');
-        setStep('welcome' as const);
+        setStep('welcome');
       } catch (error) {
         console.error('Erro ao salvar agendamento:', error);
         toast({
@@ -339,58 +341,49 @@ const Index = () => {
     }
   };
 
-  // Tela de autenticação
-  if (step === 'auth' && !isAuthenticated) {
+  // Tela de carregamento
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-4">
-        <div className="max-w-md mx-auto pt-20">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-4">{companyInfo.name}</h1>
-            {isNewClient ? (
-              <>
-                <div className="bg-amber-700 rounded-2xl p-6 mb-6">
-                  <p className="text-lg">Como vai! Que bom que chegou!</p>
-                </div>
-                <div className="bg-amber-700 rounded-2xl p-6 mb-6">
-                  <p>Para que possamos lembrá-lo de seus agendamentos, qual seu nome?</p>
-                </div>
-                <div className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Digite seu nome"
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    className="w-full p-4 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
-                  />
-                  <Button 
-                    onClick={handleNameSubmit}
-                    className="w-full bg-gray-600 hover:bg-gray-500 text-white rounded-xl p-4 text-lg"
-                  >
-                    Continuar
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="bg-amber-700 rounded-2xl p-6 mb-6">
-                <p className="text-lg">
-                  Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar seus agendamentos.
-                </p>
-              </div>
-            )}
-          </div>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="max-w-md mx-auto text-center">
+          <h1 className="text-2xl font-bold mb-4">Carregando...</h1>
+          <p className="text-lg text-gray-300">
+            Validando acesso e carregando dados...
+          </p>
         </div>
       </div>
     );
   }
 
+  // Tela de erro
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="max-w-md mx-auto text-center">
+          <h1 className="text-2xl font-bold mb-4">Erro</h1>
+          <p className="text-lg text-gray-300 mb-4">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            Tentar Novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Tela de acesso restrito
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md mx-auto text-center">
-          <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-          <p className="text-lg text-gray-300">
-            Por favor, use o link enviado via WhatsApp para acessar o sistema de agendamento.
-          </p>
+          <h1 className="text-2xl font-bold mb-4">{companyInfo.name}</h1>
+          <div className="bg-amber-700 rounded-2xl p-6 mb-6">
+            <p className="text-lg">
+              Acesso restrito. Por favor, use o link enviado via WhatsApp para acessar o sistema de agendamento.
+            </p>
+          </div>
         </div>
       </div>
     );

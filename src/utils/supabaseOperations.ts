@@ -1,7 +1,15 @@
+
 import { supabase } from '@/lib/supabase';
 import { Service, Appointment } from '@/pages/Index';
 
 // Interfaces
+interface UserAuth {
+  phone: string;
+  name: string;
+  securitycode: string;
+  createdAt?: string;
+}
+
 interface CompanyInfo {
   whatsapp: string;
   name: string;
